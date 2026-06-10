@@ -1346,6 +1346,7 @@
             <label class="cfilter-opt"><input type="checkbox" data-f="secteur" value="Viticole"><span>Viticole</span></label>
             <label class="cfilter-opt"><input type="checkbox" data-f="secteur" value="Assurance"><span>Assurance</span></label>
             <label class="cfilter-opt"><input type="checkbox" data-f="secteur" value="Restauration"><span>Restauration</span></label>
+            <label class="cfilter-opt"><input type="checkbox" data-f="secteur" value="Autre"><span>Autre</span></label>
           </div>
         </div>
         <div class="cfilter-foot">
@@ -1783,7 +1784,7 @@
         <div class="enr-field full"><label for="en-adresse">Adresse de facturation</label><input id="en-adresse" type="text" placeholder="N°, rue, code postal, ville" autocomplete="off"></div>
         <div class="enr-field"><label for="en-siret">SIRET</label><input id="en-siret" type="text" placeholder="000 000 000 00000" autocomplete="off"></div>
         <div class="enr-field"><label for="en-tjm">TJM (€/jour, si facturation en régie)</label><input id="en-tjm" type="number" min="0" step="50" placeholder="0" autocomplete="off"></div>
-        <div class="enr-field"><label for="en-proto">Secteur</label><select id="en-proto"><option>Santé</option><option>Banque</option><option>Viticole</option><option>Assurance</option><option>Restauration</option></select></div>
+        <div class="enr-field"><label for="en-proto">Secteur</label><select id="en-proto"><option>Santé</option><option>Banque</option><option>Viticole</option><option>Assurance</option><option>Restauration</option><option>Autre</option></select></div>
         <div class="enr-field"><label for="en-date">Date de création</label><input id="en-date" type="date"></div>
       </div>
     </form>
@@ -2600,7 +2601,8 @@
     'Banque':['sec-banque','<path d="M3 10 12 4l9 6"></path><path d="M5 10v8"></path><path d="M9 10v8"></path><path d="M15 10v8"></path><path d="M19 10v8"></path><path d="M3 21h18"></path>'],
     'Viticole':['sec-viti','<path d="M8 22h8"></path><path d="M12 15v7"></path><path d="M6 3h12l-1.2 6.2a5 5 0 0 1-9.6 0z"></path>'],
     'Assurance':['sec-assur','<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path>'],
-    'Restauration':['sec-resto','<path d="M4 3v7a2 2 0 0 0 4 0V3"></path><path d="M6 10v11"></path><path d="M17 3c-1.5 1-2.5 3-2.5 5.5 0 1.8 1 2.6 2 2.6V21"></path>']
+    'Restauration':['sec-resto','<path d="M4 3v7a2 2 0 0 0 4 0V3"></path><path d="M6 10v11"></path><path d="M17 3c-1.5 1-2.5 3-2.5 5.5 0 1.8 1 2.6 2 2.6V21"></path>'],
+    'Autre':['sec-autre','<path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><circle cx="7" cy="7" r="1.5"></circle>']
   };
   function sectorTag(sec){
     var s=SECT[sec]||SECT['Santé'];
