@@ -1,0 +1,122 @@
+/* ===========================================================
+   B.Conseil — responsive layer (shared across all app pages)
+   Loaded after each page's inline <style>, so it overrides.
+   =========================================================== */
+
+/* Mobile top bar (injected by mobile-nav.js) — hidden on desktop */
+.m-topbar{display:none}
+.nav-scrim{display:none}
+
+/* ---------- Tablet / laptop ---------- */
+@media (max-width: 1100px){
+  .app{ grid-template-columns: 232px minmax(0,1fr); gap:12px; padding:12px; }
+  .cpt-layout{ grid-template-columns:1fr !important; }
+  .cpt-preview-wrap{ position:static !important; }
+  .pf-layout{ grid-template-columns:1fr !important; }
+  .work{ grid-template-columns:1fr !important; }
+}
+
+/* ---------- Mobile: off-canvas sidebar ---------- */
+@media (max-width: 820px){
+  .app{
+    display:block;
+    padding:0;
+    min-height:100vh;
+  }
+
+  /* Top bar with hamburger + logo */
+  .m-topbar{
+    display:flex; align-items:center; gap:12px;
+    position:sticky; top:0; z-index:60;
+    height:58px; padding:0 14px;
+    background:#fff; border-bottom:1px solid var(--line);
+    box-shadow:0 1px 0 rgba(20,12,50,.04);
+  }
+  .m-topbar .burger{
+    width:40px; height:40px; flex:none; border:0; border-radius:11px;
+    background:var(--brand-100); color:var(--brand-600);
+    display:grid; place-items:center; cursor:pointer;
+  }
+  .m-topbar .burger svg{ width:20px; height:20px; }
+  .m-topbar .mt-logo{ height:30px; width:auto; display:block; }
+  .m-topbar .mt-title{ font-weight:800; font-size:15px; letter-spacing:-.01em; color:var(--ink-900); }
+
+  /* Sidebar becomes a slide-in drawer */
+  .sidebar{
+    position:fixed; top:0; left:0; z-index:80;
+    width:280px; max-width:86vw;
+    height:100vh; height:100dvh;
+    border-radius:0;
+    transform:translateX(-104%);
+    transition:transform .26s cubic-bezier(.4,.0,.2,1);
+    box-shadow:0 24px 60px -16px rgba(20,12,50,.5);
+  }
+  body.nav-open .sidebar{ transform:none; }
+
+  .nav-scrim{
+    display:block; position:fixed; inset:0; z-index:70;
+    background:rgba(20,12,50,.42);
+    opacity:0; pointer-events:none; transition:opacity .26s ease;
+  }
+  body.nav-open .nav-scrim{ opacity:1; pointer-events:auto; }
+  body.nav-open{ overflow:hidden; }
+
+  /* Main fills width below the top bar */
+  .main{ padding:12px; gap:12px; }
+
+  /* Topbars wrap nicely */
+  .topbar{ flex-wrap:wrap; height:auto; padding:12px; gap:10px; }
+  .topbar .search{ order:3; width:100%; flex:1 1 100%; }
+  .topbar-right{ margin-left:auto; }
+  .cpt-topbar, .pf-topbar{ align-items:flex-start; }
+
+  /* Stack the comparison/detail layouts */
+  .cpt-layout, .pf-layout, .work{ grid-template-columns:1fr !important; }
+  .cpt-preview-wrap{ position:static !important; }
+
+  /* ---- Clients list → card-style rows ---- */
+  .list-head{ display:none !important; }
+  .list-card .row,
+  .main.has-detail .row{
+    grid-template-columns: 1fr auto !important;
+    grid-auto-rows:auto;
+    gap:6px 12px !important;
+    padding:14px 16px !important;
+    align-items:center;
+  }
+  .row .name{ grid-column:1; }
+  .row .tags{ grid-column:2; grid-row:1; justify-content:flex-end !important; }
+  .row .cell-statut{ grid-column:1 / -1; }
+  .row .email.cell-contact,
+  .row .phone.cell-contact{ grid-column:1 / -1; font-size:12.5px; }
+  .row .row-actions{ grid-column:1 / -1; opacity:1 !important; justify-content:flex-start !important; gap:8px; margin-top:4px; }
+  .row .row-actions .row-ic{ width:36px; height:36px; }
+
+  /* Comptabilité builder lines: let them scroll horizontally instead of squishing */
+  .cpt-lines-head, .cpt-line{
+    grid-template-columns: minmax(120px,1fr) 52px 92px 72px 84px 28px !important;
+    gap:6px !important;
+  }
+  #cpt-lines, .cpt-sec > .cpt-lines-head{ overflow-x:auto; }
+  .cpt-doc{ padding:22px 18px; }
+  .cpt-drow{ grid-template-columns: 1fr auto !important; gap:4px 10px !important; }
+  .cpt-drow > span:nth-child(4){ display:none; }
+
+  /* Tâches kanban: horizontal scroll-snap of columns */
+  .kanban{ grid-auto-columns:80% !important; }
+
+  /* Modals fit small screens */
+  .confirm-modal-card{ width:calc(100vw - 28px) !important; max-width:none !important; }
+  .enr-grid{ grid-template-columns:1fr !important; }
+
+  /* Profile two-up → one column */
+  .pf-card{ text-align:left; }
+}
+
+/* ---------- Small phones ---------- */
+@media (max-width: 460px){
+  .topbar-right .btn-teal{ width:100%; }
+  .cpt-seg, .cpt-client-mode{ width:100%; }
+  .cpt-seg button{ flex:1; }
+  .m-topbar .mt-title{ display:none; }
+}
