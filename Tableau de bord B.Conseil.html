@@ -2296,21 +2296,31 @@
     fileInput.addEventListener('change', function(){ addAttachment(fileInput.files); fileInput.value=''; });
   }
 
-  // Row click opens fiche
-  document.querySelectorAll('.list-card .row').forEach(function(row){
-    if(!row.querySelector('.name')) return;
-    row.style.cursor='pointer';
-    row.addEventListener('click', function(e){
+  // Délégation : fonctionne aussi pour les lignes rendues depuis la base.
+  var listCardEl=document.querySelector('.list-card');
+  if(listCardEl){
+    listCardEl.addEventListener('click', function(e){
+      var row=e.target.closest('.row'); if(!row || !row.querySelector('.name')) return;
+      var actBtn=e.target.closest('[data-rowact]');
+      if(actBtn){
+        e.stopPropagation();
+        var act=actBtn.getAttribute('data-rowact');
+        if(act==='view'){ openFromRow(row); }
+        else if(act==='edit'){ openFromRow(row); var b=document.getElementById('cf-edit'); if(b && !modal.classList.contains('editing')) b.click(); }
+        else if(act==='archive'){
+          var nm=((row.querySelector('.name .n')||{}).textContent||'ce client').trim();
+          if(!window.confirm('Supprimer définitivement « '+nm+' » ?')) return;
+          var id=row.getAttribute('data-id');
+          row.style.transition='opacity .25s ease'; row.style.opacity='0';
+          setTimeout(function(){ row.remove(); if(window.bcReapplyFilters) window.bcReapplyFilters(); },260);
+          if(id && window.BC){ BC.clients.remove(id).catch(function(err){ console.error('[BC] suppr client', err); }); }
+        }
+        return;
+      }
       if(e.target.closest('.rowmenu') || e.target.closest('.drag') || e.target.closest('.row-actions')) return;
       openFromRow(row);
     });
-    var ra=row.querySelector('.row-actions');
-    if(ra){
-      var v=ra.querySelector('[data-rowact=view]'); if(v) v.addEventListener('click',function(e){ e.stopPropagation(); openFromRow(row); });
-      var ed=ra.querySelector('[data-rowact=edit]'); if(ed) ed.addEventListener('click',function(e){ e.stopPropagation(); openFromRow(row); var b=document.getElementById('cf-edit'); if(b && !modal.classList.contains('editing')) b.click(); });
-      var ar=ra.querySelector('[data-rowact=archive]'); if(ar) ar.addEventListener('click',function(e){ e.stopPropagation(); row.style.transition='opacity .25s ease'; row.style.opacity='0'; setTimeout(function(){ row.remove(); },260); });
-    }
-  });
+  }
   modal.addEventListener('click', function(e){
     if(e.target === modal) close();
     if(e.target.closest('[data-close]')) close();
@@ -2360,7 +2370,6 @@
   var panel=document.getElementById('client-filter');
   var search=document.querySelector('.topbar .search input');
   if(!btn||!panel) return;
-  var rows=[].slice.call(document.querySelectorAll('.list-card .row')).filter(function(r){return r.querySelector('.name');});
   function actives(){
     return {
       st:[].slice.call(panel.querySelectorAll('input[data-f=statut]:checked')).map(function(i){return i.value;}),
@@ -2370,6 +2379,7 @@
   function apply(){
     var q=(search&&search.value.trim().toLowerCase())||'';
     var f=actives(), n=0;
+    var rows=[].slice.call(document.querySelectorAll('.list-card .row')).filter(function(r){return r.querySelector('.name');});
     rows.forEach(function(row){
       var okQ=!q||(row.textContent||'').toLowerCase().indexOf(q)!==-1;
       var st=row.getAttribute('data-statut')||'';
@@ -2383,6 +2393,7 @@
     var cEl=document.querySelector('.list-foot .count');
     if(cEl) cEl.innerHTML='1–'+n+' sur <strong>'+n+'</strong> clients';
   }
+  window.bcReapplyFilters=apply;
   function openP(){ var r=btn.getBoundingClientRect(); panel.style.top=(r.bottom+8)+'px'; var l=r.left; if(l+400>window.innerWidth-12) l=window.innerWidth-12-400; panel.style.left=l+'px'; panel.classList.add('open'); }
   function closeP(){ panel.classList.remove('open'); }
   btn.addEventListener('click',function(e){ e.stopPropagation(); panel.classList.contains('open')?closeP():openP(); });
@@ -2423,6 +2434,8 @@
     div.setAttribute('data-statut', c.statut||'prospection');
     div.setAttribute('data-devis', c.devis_date||c.date||'');
     div.setAttribute('data-stored','1');
+    div.setAttribute('data-id', c.id||'');
+    div.style.cursor='pointer';
     div.innerHTML=
       '<div class="name"><div class="n">'+esc(c.societe)+'</div><div class="c">'+esc(c.contact||'')+'</div></div>'+
       '<div class="tags">'+sectorTag(c.secteur)+'</div>'+
@@ -2457,14 +2470,15 @@
     return set;
   }
 
-  // Rend les clients de la base qui ne sont pas déjà affichés en dur.
+  // Rend TOUTE la liste depuis la base (les lignes en dur sont remplacées).
   function renderStored(){
-    document.querySelectorAll('.row[data-stored]').forEach(function(r){ r.remove(); });
-    var base=staticNames();
-    BC.clients.all().forEach(function(c){
-      if(base[norm(c.societe)]) return; // déjà affiché par une ligne de base
-      insertRow(c);
-    });
+    var lc=listCard(); if(!lc) return;
+    lc.querySelectorAll('.row').forEach(function(r){ r.remove(); });
+    var head=lc.querySelector('.list-head');
+    var frag=document.createDocumentFragment();
+    BC.clients.all().forEach(function(c){ frag.appendChild(buildRow(c)); });
+    if(head) lc.insertBefore(frag, head.nextSibling); else lc.insertBefore(frag, lc.firstChild);
+    if(window.bcReapplyFilters) window.bcReapplyFilters();
   }
 
   // Applique le statut venant de la base (Comptabilité, fiche…) à chaque ligne.

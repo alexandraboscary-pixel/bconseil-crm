@@ -1486,6 +1486,12 @@
   }
   function recount(){
     board.querySelectorAll('.kb-col').forEach(function(col){ col.querySelector('.cnt').textContent=col.querySelectorAll('.kb-card').length; });
+    // Compteurs des « Vues » dans la barre latérale (selon les tâches réelles).
+    document.querySelectorAll('.sidebar .filter.view[data-col]').forEach(function(v){
+      var key=v.getAttribute('data-col');
+      var c=v.querySelector('.count');
+      if(c) c.textContent=TASKS.filter(function(t){return t.col===key;}).length;
+    });
   }
   function getAfter(list,y){
     var cards=[].slice.call(list.querySelectorAll('.kb-card:not(.dragging)'));
