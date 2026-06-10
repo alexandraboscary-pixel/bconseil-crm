@@ -2291,12 +2291,12 @@
     +'<div class="sheet"><div class="bar"><span style="font-size:13px;color:#5634C9;font-weight:600">Aper\u00e7u du devis \u2014 imprimez ou enregistrez en PDF</span><button onclick="window.print()">Imprimer / PDF</button></div>'
     +'<div class="top"><div class="brand">B<span>.</span>Conseil<small>Agence dev, IA &amp; design</small></div>'
     +'<div class="docmeta"><h1>DEVIS</h1><p>R\u00e9f. '+ref+'</p><p>Date : '+(d.devisDate||'')+'</p></div></div>'
-    +'<div class="parties"><div><h3>\u00c9metteur</h3><p class="nm">B.Conseil</p><p>12 rue de la R\u00e9publique<br>69002 Lyon<br>contact@b-conseil.fr</p></div>'
+    +'<div class="parties"><div><h3>\u00c9metteur</h3><p class="nm">B.Conseil</p><p>9 rue du G\u00e9n\u00e9ral de Larminat<br>75015 Paris<br>SIRET 480 778 083 00018<br>contact@b-conseil.com</p></div>'
     +'<div style="text-align:right"><h3>Client</h3><p class="nm">'+(d.societe||'')+'</p><p>'+((d.prenom||'')+' '+(d.nom||'')).trim()+'<br>'+(d.email||'')+'<br>'+(d.phone||'')+'</p></div></div>'
     +'<table><thead><tr><th>Prestation</th><th class="r">Qt\u00e9</th><th class="r">Montant HT</th></tr></thead>'
     +'<tbody><tr><td><strong>'+(d.secteur?d.secteur+' \u2014 ':'')+'Mission '+(d.referent?'(r\u00e9f. '+d.referent+')':'')+'</strong><br><span style="color:#9A96A8;font-size:12.5px">Accompagnement B.Conseil sur le projet</span></td><td class="r">1</td><td class="r">'+euro(ht)+'</td></tr></tbody></table>'
     +'<div class="tot"><div><span>Total HT</span><span>'+euro(ht)+'</span></div><div><span>TVA 20%</span><span>'+euro(tva)+'</span></div><div class="ttc"><span>Total TTC</span><span>'+euro(ttc)+'</span></div></div>'
-    +'<div class="foot">Devis valable 30 jours \u00e0 compter de sa date d\u2019\u00e9mission. R\u00e8glement \u00e0 30 jours. B.Conseil \u2014 SIRET 000 000 000 00000.</div></div></body></html>';
+    +'<div class="foot">Devis valable 30 jours \u00e0 compter de sa date d\u2019\u00e9mission. R\u00e8glement \u00e0 30 jours. B.Conseil \u2014 9 rue du G\u00e9n\u00e9ral de Larminat, 75015 Paris \u2014 SIRET 480 778 083 00018 \u2014 contact@b-conseil.com</div></div></body></html>';
   }
   document.getElementById('cf-pdf').addEventListener('click', function(){
     var w=window.open('','_blank');
