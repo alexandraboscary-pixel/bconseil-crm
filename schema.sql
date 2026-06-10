@@ -55,6 +55,7 @@ create table if not exists public.documents (
   tva         numeric default 0,
   ttc         numeric default 0,
   lines       jsonb default '[]'::jsonb,  -- [{des,qte,pu,tva}]
+  meta        jsonb default '{}'::jsonb,  -- {objet,validite,referent,perimetre_in[],perimetre_out[],conditions[]}
   notes       text,
   statut      text,                 -- 'devis' | 'facture'
   sent        boolean default false,

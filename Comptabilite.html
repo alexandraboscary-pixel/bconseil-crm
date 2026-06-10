@@ -1454,6 +1454,26 @@
           <div class="enr-field"><textarea id="cpt-notes" rows="2" placeholder="Conditions de règlement, mentions légales…">Règlement à 30 jours. TVA non applicable, art. 293 B du CGI le cas échéant.</textarea></div>
         </div>
 
+        <div class="cpt-sec" id="cpt-devis-extra">
+          <div class="cpt-sec-h"><span class="cpt-step">5</span> Détails du devis</div>
+          <div class="enr-field"><label>Validité</label><input id="cpt-validite" type="text" value="30 jours" autocomplete="off"></div>
+          <div class="enr-field"><label>Référent</label><input id="cpt-referent" type="text" value="François Boscary" autocomplete="off"></div>
+          <div class="enr-field"><label>Périmètre inclus (une ligne par élément)</label><textarea id="cpt-perim-in" rows="5">Cadrage &amp; conception du process
+Automatisations (Make/n8n + Claude API)
+Classement &amp; nommage automatique des documents
+Synthèses, analyses &amp; rapports générés par IA
+Tests, documentation &amp; formation</textarea></div>
+          <div class="enr-field"><label>Périmètre exclus (une ligne par élément)</label><textarea id="cpt-perim-out" rows="4">Coûts d'API à l'usage (Claude, OCR) &amp; abonnements
+Licences logicielles tierces
+Stockage &amp; hébergement des données
+Maintenance évolutive au-delà de la garantie</textarea></div>
+          <div class="enr-field"><label>Conditions (une ligne par élément)</label><textarea id="cpt-conditions" rows="5">Règlement : Acompte de 30 % à la commande, solde par jalons à la livraison de chaque lot.
+Délai estimatif : à compter du cadrage, selon disponibilités et réactivité sur les retours.
+Coûts récurrents : abonnements et API à la charge du client ou refacturés au réel.
+Confidentialité : données traitées dans le respect du RGPD (accès restreints).
+Hypothèses : volume et critères à préciser lors du cadrage.</textarea></div>
+        </div>
+
         <div class="cpt-foot">
           <div class="cpt-foot-tot"><span>Total TTC</span><strong id="cpt-foot-ttc">0,00 €</strong></div>
           <button class="btn-teal" id="cpt-save" type="button">Enregistrer le devis</button>
@@ -1656,9 +1676,12 @@
       }
       return BC.clients.updateStatus(c.societe, statut);
     }).then(function(){
+      function val(id, def){ var el=$(id); return (el && el.value!=null && el.value.trim()!=='') ? el.value.trim() : (def||''); }
+      function sl(id){ var el=$(id); return el?(el.value||'').split('\n').map(function(s){return s.trim();}).filter(Boolean):[]; }
+      var meta={ objet:val('cpt-ref',''), validite:val('cpt-validite','30 jours'), referent:val('cpt-referent',''), perimetre_in:sl('cpt-perim-in'), perimetre_out:sl('cpt-perim-out'), conditions:sl('cpt-conditions') };
       return BC.docs.create({
         type:type, numero:num, societe:c.societe, contact:c.contact||'', date:dateVal,
-        ht:ht, tva:tva, ttc:ttc, lines:lines, statut:statut,
+        ht:ht, tva:tva, ttc:ttc, lines:lines, statut:statut, meta:meta,
         ref:($('cpt-ref').value||'').trim(), notes:($('cpt-notes').value||'').trim()
       });
     }).then(function(doc){
