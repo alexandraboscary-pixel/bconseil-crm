@@ -1719,6 +1719,7 @@
     var due=new Date(); due.setDate(due.getDate()+30); $('cpt-due').value=iso(due);
     resetLines(); fillSelect(); renderRecent();
     setType('devis'); setMode('existing');
+    try{ var _p=new URLSearchParams(location.search), _c=_p.get('client'); if(_c){ var _s=$('cpt-client-sel'); if(_s){ _s.value=_c; recalc(); } } }catch(e){}
     $('cpt-seg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(b) setType(b.dataset.type); });
     $('cpt-mode').addEventListener('click',function(e){ var b=e.target.closest('button'); if(b) setMode(b.dataset.mode); });
     $('cpt-addline').addEventListener('click',addLine);

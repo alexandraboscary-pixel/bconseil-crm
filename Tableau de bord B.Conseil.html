@@ -1642,6 +1642,7 @@
               <div class="cf-devis-cell"><span class="cf-k">Montant</span><span class="cf-v cf-amount" data-field="montant">—</span></div>
             </div>
             <button class="cf-pdf" id="cf-pdf" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg> Voir le devis (PDF)</button>
+            <div id="cf-doc-list" style="display:flex;flex-direction:column;gap:10px;margin-top:2px"></div>
           </div>
         </div>
 
@@ -2224,6 +2225,7 @@
     modal.__clientId=(stored && stored.id) ? stored.id : (row.getAttribute('data-id')||null);
     modal.__history=(stored && stored.history && stored.history.length) ? stored.history.slice() : [];
     renderHistory();
+    renderClientDocs(societe);
     var firstName=(contact||'').split(' ')[0]||'';
     var sumEl=document.getElementById('cf-summary'); if(sumEl) sumEl.innerHTML=summaryHTML(firstName, societe, devisDate, fmtMoney(montant), statutKey);
 
@@ -2265,9 +2267,17 @@
 
   // Devis PDF
   function devisHtml(d){
-    var ref='DEV-2026-'+String(1000+(hash(d.societe||'')%9000));
-    var ht=d.montant||0, tva=Math.round(ht*0.2), ttc=ht+tva;
+    var ref=d.__numero || ('DEV-2026-'+String(1000+(hash(d.societe||'')%9000)));
+    var ht=(d.__ht!=null)?Number(d.__ht):(d.montant||0);
+    var tva=(d.__tva!=null)?Number(d.__tva):Math.round(ht*0.2);
+    var ttc=(d.__ttc!=null)?Number(d.__ttc):(ht+tva);
     var euro=function(n){ return Number(n).toLocaleString('fr-FR')+' \u20ac'; };
+    var rowsHtml='';
+    if(d.__lines && d.__lines.length){
+      d.__lines.forEach(function(l){ var q=Number(l.qte)||1, pu=Number(l.pu)||0; var des=(l.des||'Prestation').toString().replace(/[&<>]/g,''); rowsHtml+='<tr><td><strong>'+des+'</strong></td><td class="r">'+q+'</td><td class="r">'+euro(q*pu)+'</td></tr>'; });
+    } else {
+      rowsHtml='<tr><td><strong>'+(d.secteur?d.secteur+' \u2014 ':'')+'Mission '+(d.referent?'(r\u00e9f. '+d.referent+')':'')+'</strong><br><span style="color:#9A96A8;font-size:12.5px">Accompagnement B.Conseil sur le projet</span></td><td class="r">1</td><td class="r">'+euro(ht)+'</td></tr>';
+    }
     return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Devis '+ref+'</title>'
     +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1C172E;background:#F6F4FB;padding:40px}'
     +'.sheet{max-width:760px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 10px 40px -16px rgba(28,23,46,.2);overflow:hidden}'
@@ -2294,7 +2304,7 @@
     +'<div class="parties"><div><h3>\u00c9metteur</h3><p class="nm">B.Conseil</p><p>9 rue du G\u00e9n\u00e9ral de Larminat<br>75015 Paris<br>SIRET 480 778 083 00018<br>contact@b-conseil.com</p></div>'
     +'<div style="text-align:right"><h3>Client</h3><p class="nm">'+(d.societe||'')+'</p><p>'+((d.prenom||'')+' '+(d.nom||'')).trim()+'<br>'+(d.email||'')+'<br>'+(d.phone||'')+'</p></div></div>'
     +'<table><thead><tr><th>Prestation</th><th class="r">Qt\u00e9</th><th class="r">Montant HT</th></tr></thead>'
-    +'<tbody><tr><td><strong>'+(d.secteur?d.secteur+' \u2014 ':'')+'Mission '+(d.referent?'(r\u00e9f. '+d.referent+')':'')+'</strong><br><span style="color:#9A96A8;font-size:12.5px">Accompagnement B.Conseil sur le projet</span></td><td class="r">1</td><td class="r">'+euro(ht)+'</td></tr></tbody></table>'
+    +'<tbody>'+rowsHtml+'</tbody></table>'
     +'<div class="tot"><div><span>Total HT</span><span>'+euro(ht)+'</span></div><div><span>TVA 20%</span><span>'+euro(tva)+'</span></div><div class="ttc"><span>Total TTC</span><span>'+euro(ttc)+'</span></div></div>'
     +'<div class="foot">Devis valable 30 jours \u00e0 compter de sa date d\u2019\u00e9mission. R\u00e8glement \u00e0 30 jours. B.Conseil \u2014 9 rue du G\u00e9n\u00e9ral de Larminat, 75015 Paris \u2014 SIRET 480 778 083 00018 \u2014 contact@b-conseil.com</div></div></body></html>';
   }
@@ -2303,6 +2313,62 @@
     if(!w){ return; }
     w.document.open(); w.document.write(devisHtml(modal.__devis||{})); w.document.close();
   });
+
+  // ---- Cycle de vie des devis du client (Voir / Renvoyer / Modifier / Supprimer) ----
+  function frD(s){ if(!s) return ''; var p=(''+s).split('-'); return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : s; }
+  function clientDocs(soc){ var k=(soc||'').toString().trim().toLowerCase(); return (window.BC?BC.docs.all():[]).filter(function(d){ return (d.societe||'').toString().trim().toLowerCase()===k; }); }
+  function docBtn(act,label,color){ return '<button type="button" data-docact="'+act+'" style="border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 11px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer'+(color?';color:'+color:'')+'">'+label+'</button>'; }
+  function renderClientDocs(soc){
+    var box=document.getElementById('cf-doc-list'); if(!box) return;
+    var docs=clientDocs(soc).slice().reverse();
+    var pdfBtn=document.getElementById('cf-pdf');
+    if(!docs.length){ box.innerHTML=''; if(pdfBtn) pdfBtn.style.display=''; return; }
+    if(pdfBtn) pdfBtn.style.display='none';
+    box.innerHTML=docs.map(function(d){
+      var label=d.type==='facture'?'Facture':'Devis';
+      var sent=d.sent?' · <span style="color:#0E9E8E;font-weight:600">envoyé</span>':'';
+      return '<div data-doc="'+d.id+'" style="border:1px solid var(--line);border-radius:var(--cal-radius-md);padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:#FBFAFE">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'
+          +'<div style="display:flex;flex-direction:column;gap:2px;min-width:0">'
+            +'<strong style="font-size:13.5px">'+escH(d.numero||label)+sent+'</strong>'
+            +'<span style="font-size:12px;color:#9A96A8">'+label+' · '+frD(d.date)+'</span>'
+          +'</div>'
+          +'<span style="font-weight:800;font-size:15px;white-space:nowrap">'+fmtMoney(Math.round(d.ttc||0))+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+docBtn('view','Voir')+docBtn('resend','Renvoyer')+docBtn('edit','Modifier')+docBtn('del','Supprimer','#DC2626')+'</div>'
+      +'</div>';
+    }).join('');
+  }
+  (function(){
+    var docListEl=document.getElementById('cf-doc-list'); if(!docListEl) return;
+    docListEl.addEventListener('click', function(e){
+      var btn=e.target.closest('[data-docact]'); if(!btn) return;
+      var row=e.target.closest('[data-doc]'); if(!row) return;
+      var id=row.getAttribute('data-doc');
+      var d=(window.BC?BC.docs.all():[]).filter(function(x){return x.id===id;})[0]; if(!d) return;
+      var cl=modal.__devis||{};
+      var act=btn.getAttribute('data-docact');
+      if(act==='view'){
+        var w=window.open('','_blank'); if(!w) return;
+        w.document.open(); w.document.write(devisHtml(Object.assign({}, cl, {societe:d.societe, devisDate:frD(d.date), __numero:d.numero, __ht:d.ht, __tva:d.tva, __ttc:d.ttc, __lines:d.lines}))); w.document.close();
+      } else if(act==='resend'){
+        var em=window.prompt('Renvoyer « '+(d.numero||'le devis')+' » à :', cl.email||'');
+        if(!em) return;
+        BC.docs.markSent(id, em).then(function(){
+          renderClientDocs(d.societe);
+          var now=new Date(); var dd=pad(now.getDate())+'/'+pad(now.getMonth()+1)+'/'+now.getFullYear();
+          if(!modal.__history) modal.__history=[];
+          modal.__history.push({k:'msg', side:'out', text:(d.numero||'Devis')+' renvoyé à '+em, meta:'Vous · '+dd, persist:true});
+          renderHistory(); persistHistory();
+        }).catch(function(err){ console.error(err); });
+      } else if(act==='edit'){
+        window.location.href='Comptabilite.html?doc='+encodeURIComponent(id)+'&client='+encodeURIComponent(d.societe||'');
+      } else if(act==='del'){
+        if(!window.confirm('Supprimer définitivement '+(d.numero||'ce document')+' ?')) return;
+        BC.docs.remove(id).then(function(){ renderClientDocs(d.societe); }).catch(function(err){ console.error(err); });
+      }
+    });
+  })();
 
   // Add exchange
   var msgInput=document.getElementById('cf-msg'), sendBtn=document.getElementById('cf-send');
