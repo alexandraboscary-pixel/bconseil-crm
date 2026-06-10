@@ -177,6 +177,12 @@
       markLocal("documents");
       return resilientWrite("documents", d, null).then(function (data) { cache.documents.push(data); return data; });
     },
+    update: function (id, patch) {
+      markLocal("documents");
+      return resilientWrite("documents", patch, id).then(function (data) {
+        var ex = cache.documents.filter(function (x) { return x.id === id; })[0]; if (ex) Object.assign(ex, data); return ex;
+      });
+    },
     markSent: function (id, email) {
       markLocal("documents");
       return sb.from("documents").update({ sent: true, sent_to: email }).eq("id", id).select().single()

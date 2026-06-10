@@ -1553,7 +1553,38 @@ Hypothèses : volume et critères à préciser lors du cadrage.</textarea></div>
   var STM={prospection:['En prospection','i-eye'],devis:['Devis envoyé','i-send'],encours:['En cours','i-clock'],termine:['Terminé','i-check'],facture:['Facture envoyée','i-file'],paye:['Payé','i-check'],recontacter:['À recontacter','i-bell']};
   function pill(st){ var m=STM[st]||STM.prospection; return '<span class="lst-st '+st+'"><svg><use href="#'+m[1]+'"></use></svg> '+m[0]+'</span>'; }
 
-  var type='devis', mode='existing';
+  var type='devis', mode='existing', editingDocId=null;
+
+  // Charge un document existant dans le formulaire pour l'éditer (depuis le dossier client).
+  function loadDoc(doc){
+    if(!doc) return;
+    editingDocId=doc.id;
+    setType(doc.type||'devis');
+    setMode('existing');
+    var sel=$('cpt-client-sel'); if(sel) sel.value=doc.societe||'';
+    if(doc.numero) $('cpt-num').value=doc.numero;
+    if(doc.date) $('cpt-date').value=doc.date;
+    var meta=doc.meta||{};
+    if($('cpt-ref')) $('cpt-ref').value=meta.objet||doc.ref||'';
+    if($('cpt-notes')) $('cpt-notes').value=doc.notes||'';
+    if($('cpt-validite')) $('cpt-validite').value=meta.validite||'30 jours';
+    if($('cpt-referent')) $('cpt-referent').value=meta.referent||'';
+    if($('cpt-perim-in')) $('cpt-perim-in').value=(meta.perimetre_in||[]).join('\n');
+    if($('cpt-perim-out')) $('cpt-perim-out').value=(meta.perimetre_out||[]).join('\n');
+    if($('cpt-conditions')) $('cpt-conditions').value=(meta.conditions||[]).join('\n');
+    var box=$('cpt-lines'); box.innerHTML='';
+    var ls=(doc.lines&&doc.lines.length)?doc.lines:[{des:'',qte:1,pu:0,tva:20}];
+    ls.forEach(function(l){
+      var row=lineRow(); box.appendChild(row);
+      row.querySelector('.l-des').value=l.des||'';
+      row.querySelector('.l-qte').value=(l.qte!=null?l.qte:1);
+      row.querySelector('.l-pu').value=(l.pu!=null?l.pu:0);
+      var tv=row.querySelector('.l-tva'); if(tv) tv.value=String(l.tva!=null?l.tva:20);
+    });
+    recalc();
+    $('cpt-save').textContent=(doc.type==='facture'?'Mettre à jour la facture':'Mettre à jour le devis');
+    toast('Document '+(doc.numero||'')+' chargé — modifiez puis enregistrez.');
+  }
 
   function nextNum(){ var docs=BC.docs.all(); var pre=type==='devis'?'DEV':'FAC'; var n=docs.filter(function(d){return d.type===type;}).length+1; return pre+'-2026-'+pad3(n); }
 
@@ -1697,18 +1728,21 @@ Hypothèses : volume et critères à préciser lors du cadrage.</textarea></div>
       function val(id, def){ var el=$(id); return (el && el.value!=null && el.value.trim()!=='') ? el.value.trim() : (def||''); }
       function sl(id){ var el=$(id); return el?(el.value||'').split('\n').map(function(s){return s.trim();}).filter(Boolean):[]; }
       var meta={ objet:val('cpt-ref',''), validite:val('cpt-validite','30 jours'), referent:val('cpt-referent',''), perimetre_in:sl('cpt-perim-in'), perimetre_out:sl('cpt-perim-out'), conditions:sl('cpt-conditions') };
-      return BC.docs.create({
+      var payload={
         type:type, numero:num, societe:c.societe, contact:c.contact||'', date:dateVal,
         ht:ht, tva:tva, ttc:ttc, lines:lines, statut:statut, meta:meta,
         ref:($('cpt-ref').value||'').trim(), notes:($('cpt-notes').value||'').trim()
-      });
+      };
+      return editingDocId ? BC.docs.update(editingDocId, payload) : BC.docs.create(payload);
     }).then(function(doc){
+      editingDocId=null;
       resetLines();
       if(mode==='new'){ ['nc-societe','nc-contact','nc-email','nc-tel','nc-ville'].forEach(function(id){ $(id).value=''; }); }
       fillSelect();
       $('cpt-num').value=nextNum();
       renderRecent();
       recalc();
+      $('cpt-save').textContent = type==='devis'?'Enregistrer le devis':'Enregistrer la facture';
       btn.disabled=false;
       openSent(doc.id, savedType, num, savedClient);
     }).catch(function(e){ console.error(e); btn.disabled=false; toast('Erreur d’enregistrement : '+(e.message||e)); });
@@ -1791,6 +1825,7 @@ Hypothèses : volume et critères à préciser lors du cadrage.</textarea></div>
       init();
       BC.onChange('documents', renderRecent);
       BC.onChange('clients', fillSelect);
+      try{ var _dp=new URLSearchParams(location.search).get('doc'); if(_dp){ var _doc=BC.docs.all().filter(function(x){return x.id===_dp;})[0]; if(_doc) loadDoc(_doc); } }catch(e){ console.error(e); }
     }).catch(function(e){ console.error('[BC] chargement', e); init(); });
   }
   if(document.readyState!=='loading') boot(); else document.addEventListener('DOMContentLoaded',boot);
