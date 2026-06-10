@@ -2193,7 +2193,10 @@
       var _s=getText('secteur'); if(_s&&_s!=='—') pay.secteur=_s;
       var _d=getText('devisDate'); if(_d&&_d!=='—') pay.devis_date=_d;
       pay.tjm=tjmNum;
-      BC.clients.upsert(pay).catch(function(e){ console.error('[BC] maj fiche', e); });
+      var _ft=document.createElement('div');
+      _ft.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);color:#fff;font:600 13.5px/1.4 Inter,sans-serif;padding:11px 16px;border-radius:10px;z-index:600;box-shadow:0 8px 28px -8px rgba(0,0,0,.45);max-width:min(460px,92vw)';
+      function _show(msg,bad){ _ft.textContent=msg; _ft.style.background=bad?'#C0392B':'#2A2834'; document.body.appendChild(_ft); setTimeout(function(){ _ft.remove(); }, bad?6000:2200); }
+      BC.clients.upsert(pay).then(function(){ _show('Fiche enregistrée'); }).catch(function(e){ console.error('[BC] maj fiche', e); _show('Erreur d’enregistrement : '+(e.message||e), true); });
     }
     if(srcRow){
       var n=srcRow.querySelector('.name .n'); if(n) n.textContent=societe;
