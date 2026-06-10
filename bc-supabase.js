@@ -249,4 +249,12 @@
   if (!window.BC_NO_GUARD) {
     auth.requireSession();
   }
+
+  // ---- Déconnexion universelle ---------------------------------------------
+  // N'importe quel élément .logout, .pf-logout ou [data-bc-logout] déclenche
+  // une vraie déconnexion Supabase, sur toutes les pages.
+  document.addEventListener("click", function (e) {
+    var el = e.target && e.target.closest && e.target.closest(".logout, .pf-logout, [data-bc-logout]");
+    if (el) { e.preventDefault(); auth.signOut(); }
+  });
 })();
