@@ -42,6 +42,34 @@
   var suppress = { clients: 0, documents: 0, tasks: 0 };
   function markLocal(table) { suppress[table] = Date.now() + 2500; }
 
+  // Détecte une colonne absente du schéma dans une erreur PostgREST.
+  function missingCol(err) {
+    if (!err) return null;
+    var m = (err.message || "") + " " + (err.details || "") + " " + (err.hint || "");
+    var mm = m.match(/Could not find the '([^']+)' column/i) || m.match(/column "?([a-zA-Z_]+)"? of relation/i) || m.match(/column "?([a-zA-Z_]+)"? does not exist/i);
+    return mm ? mm[1] : null;
+  }
+  // Écriture résiliente : si une colonne n'existe pas encore (schéma incomplet),
+  // on la retire et on réessaie — les autres champs sont quand même enregistrés.
+  function resilientWrite(table, fields, idEq) {
+    function attempt(f, tries) {
+      var q = idEq ? sb.from(table).update(f).eq("id", idEq) : sb.from(table).insert(f);
+      return q.select().single().then(function (r) {
+        if (r.error) {
+          var col = missingCol(r.error);
+          if (col && Object.prototype.hasOwnProperty.call(f, col) && tries < 10) {
+            var f2 = Object.assign({}, f); delete f2[col];
+            console.warn("[BC] colonne absente ignorée : " + col + " — lancez le SQL ALTER pour la conserver.");
+            return attempt(f2, tries + 1);
+          }
+          throw r.error;
+        }
+        return r.data;
+      });
+    }
+    return attempt(fields, 0);
+  }
+
   // ---- helpers --------------------------------------------------------------
   function norm(s) { return (s || "").toString().trim().toLowerCase(); }
   function emit(table) { (listeners[table] || []).forEach(function (cb) { try { cb(cache[table]); } catch (e) { console.error(e); } }); }
@@ -118,16 +146,15 @@
       ["societe", "contact", "prenom", "nom", "email", "tel", "ville", "secteur", "statut", "devis_date", "montant", "referent", "logo_url", "notes", "history", "adresse", "siret", "tjm"]
         .forEach(function (k) { if (c[k] !== undefined) fields[k] = c[k]; });
       if (ex) {
-        return sb.from("clients").update(fields).eq("id", ex.id).select().single()
-          .then(function (r) { if (r.error) throw r.error; Object.assign(ex, r.data); return ex; });
+        return resilientWrite("clients", fields, ex.id).then(function (data) { Object.assign(ex, data); return ex; });
       }
-      return sb.from("clients").insert(fields).select().single()
-        .then(function (r) { if (r.error) throw r.error; cache.clients.push(r.data); return r.data; });
+      return resilientWrite("clients", fields, null).then(function (data) { cache.clients.push(data); return data; });
     },
     update: function (id, patch) {
       markLocal("clients");
-      return sb.from("clients").update(patch).eq("id", id).select().single()
-        .then(function (r) { if (r.error) throw r.error; var ex = cache.clients.filter(function (c) { return c.id === id; })[0]; if (ex) Object.assign(ex, r.data); return ex; });
+      return resilientWrite("clients", patch, id).then(function (data) {
+        var ex = cache.clients.filter(function (c) { return c.id === id; })[0]; if (ex) Object.assign(ex, data); return ex;
+      });
     },
     updateStatus: function (societe, statut) {
       markLocal("clients");
@@ -148,8 +175,7 @@
     all: function () { return cache.documents; },
     create: function (d) {
       markLocal("documents");
-      return sb.from("documents").insert(d).select().single()
-        .then(function (r) { if (r.error) throw r.error; cache.documents.push(r.data); return r.data; });
+      return resilientWrite("documents", d, null).then(function (data) { cache.documents.push(data); return data; });
     },
     markSent: function (id, email) {
       markLocal("documents");
