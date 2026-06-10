@@ -1414,30 +1414,20 @@
   if(!modal) return;
   var state={type:'tout',format:'csv'};
 
-  var COMPTA=[
-    {client:'Korrik Studio',doc:'Facture F-2026-014',date:'31/05/2026',ht:18000,statut:'Payé'},
-    {client:'Finora',doc:'Facture F-2026-013',date:'27/05/2026',ht:32000,statut:'Envoyée'},
-    {client:'Calmedica',doc:'Devis D-2026-021',date:'02/06/2026',ht:14500,statut:'Envoyé'},
-    {client:'Néovia SAS',doc:'Devis D-2026-019',date:'28/05/2026',ht:27000,statut:'Accepté'},
-    {client:'Atelier Brun',doc:'Devis D-2026-016',date:'19/05/2026',ht:9800,statut:'À relancer'},
-    {client:'Vinci & Co',doc:'Facture F-2026-012',date:'03/06/2026',ht:21000,statut:'Payé'},
-    {client:'Cabinet Vasseur',doc:'Devis D-2026-018',date:'22/05/2026',ht:12000,statut:'Accepté'},
-    {client:'Maison Lefèvre',doc:'Devis D-2026-020',date:'30/05/2026',ht:16500,statut:'Envoyé'}
-  ];
-  var PROJETS=[
-    {client:'Calmedica',secteur:'Santé',statut:'Devis envoyé',ref:'Alexandra',date:'02/06/2026'},
-    {client:'Néovia SAS',secteur:'Banque',statut:'En cours',ref:'François',date:'28/05/2026'},
-    {client:'Atelier Brun',secteur:'Restauration',statut:'À recontacter',ref:'François',date:'19/05/2026'},
-    {client:'GreenLeaf',secteur:'Viticole',statut:'En prospection',ref:'Alexandra',date:'05/06/2026'},
-    {client:'Cabinet Vasseur',secteur:'Assurance',statut:'En cours',ref:'Alexandra',date:'22/05/2026'},
-    {client:'Maison Lefèvre',secteur:'Santé',statut:'Devis envoyé',ref:'François',date:'30/05/2026'},
-    {client:'Polytech Indus',secteur:'Assurance',statut:'En prospection',ref:'François',date:'06/06/2026'},
-    {client:'Finora',secteur:'Banque',statut:'Facture envoyée',ref:'Alexandra',date:'27/05/2026'},
-    {client:'Groupe Aval',secteur:'Assurance',statut:'À recontacter',ref:'François',date:'14/05/2026'},
-    {client:'Korrik Studio',secteur:'Santé',statut:'Payé',ref:'François',date:'31/05/2026'},
-    {client:'Vinci & Co',secteur:'Viticole',statut:'Terminé',ref:'Alexandra',date:'03/06/2026'},
-    {client:'Habitat Plus',secteur:'Restauration',statut:'En prospection',ref:'Alexandra',date:'07/06/2026'}
-  ];
+  var COMPTA=[];
+  var PROJETS=[];
+  var _STLAB={prospection:'En prospection',devis:'Devis envoyé',encours:'En cours',termine:'Terminé',facture:'Facture envoyée',paye:'Payé',recontacter:'À recontacter'};
+  function _frD(s){ if(!s) return ''; var p=(''+s).split('-'); return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:s; }
+  if(window.BC){
+    BC.ready().then(function(){
+      COMPTA=BC.docs.all().map(function(d){
+        return {client:d.societe||'', doc:(d.type==='facture'?'Facture ':'Devis ')+(d.numero||''), date:_frD(d.date), ht:Number(d.ht)||0, statut:(d.sent?'Envoyé':(_STLAB[d.statut]||d.statut||''))};
+      });
+      PROJETS=BC.clients.all().map(function(c){
+        return {client:c.societe||'', secteur:c.secteur||'', statut:(_STLAB[c.statut]||c.statut||''), ref:c.referent||'', date:c.devis_date||''};
+      });
+    }).catch(function(e){ console.error('[BC] rapport', e); });
+  }
   var INCLUDES={
     compta:[['devis','Devis',true],['factures','Factures',true],['paiements','Paiements & revenu',true]],
     projets:[['clients','Clients & contacts',true],['statuts','Statuts & échéances',true],['taches','Tâches associées',false]],
