@@ -1354,8 +1354,27 @@
         </div>
       </div>
       <div class="topbar-right">
+        <div class="view-toggle" id="view-toggle" role="group" aria-label="Affichage de la liste">
+          <button type="button" class="vt-btn is-on" data-view="table" title="Vue tableau" aria-label="Vue tableau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+          <button type="button" class="vt-btn" data-view="cards" title="Vue cartes" aria-label="Vue cartes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg></button>
+        </div>
         <button class="btn-teal" id="enrol-btn"><svg width="14" height="14"><use href="#i-plus"></use></svg> Nouveau client</button>
       </div>
+      <style>
+        .view-toggle{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-right:10px}
+        .vt-btn{width:38px;height:38px;border:0;background:#fff;color:var(--ink-400);display:grid;place-items:center;cursor:pointer}
+        .vt-btn svg{width:17px;height:17px}
+        .vt-btn.is-on{background:#ECE7FD;color:#5E3FDB}
+        .vt-btn+.vt-btn{border-left:1px solid var(--line)}
+        .list-card.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:14px;background:transparent;border:0;box-shadow:none;padding:0}
+        .list-card.cards .list-head{display:none}
+        .list-card.cards .list-foot{grid-column:1/-1}
+        .list-card.cards .row{display:flex!important;flex-direction:column;align-items:flex-start;gap:9px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:15px 16px;box-shadow:0 1px 2px rgba(28,23,46,.05);cursor:pointer;grid-template-columns:none!important}
+        .list-card.cards .row>div{width:100%}
+        .list-card.cards .row .name .n{font-size:15px;font-weight:700}
+        .list-card.cards .row .cell-contact{font-size:12.5px;color:var(--ink-500)}
+        .list-card.cards .row .row-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:2px;opacity:1}
+      </style>
     </div>
 
     <!-- Workspace: list + (optional) patient detail -->
@@ -2661,6 +2680,20 @@
     }).catch(function(e){ console.error('[BC] chargement clients', e); });
   }
   if(document.readyState!=='loading') run(); else document.addEventListener('DOMContentLoaded', run);
+})();
+</script>
+<script>
+(function(){
+  var tg=document.getElementById('view-toggle'); if(!tg) return;
+  var lc=document.querySelector('.list-card'); if(!lc) return;
+  function setView(v){
+    lc.classList.toggle('cards', v==='cards');
+    tg.querySelectorAll('.vt-btn').forEach(function(b){ b.classList.toggle('is-on', b.getAttribute('data-view')===v); });
+    try{ localStorage.setItem('bc_view', v); }catch(e){}
+  }
+  tg.addEventListener('click', function(e){ var b=e.target.closest('[data-view]'); if(b) setView(b.getAttribute('data-view')); });
+  var saved='table'; try{ saved=localStorage.getItem('bc_view')||'table'; }catch(e){}
+  setView(saved);
 })();
 </script>
 <script src="mobile-nav.js"></script>
