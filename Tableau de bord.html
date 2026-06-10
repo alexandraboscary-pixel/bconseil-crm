@@ -1389,7 +1389,7 @@
     <div class="chart-head">
       <div>
         <div class="chart-title">Répartition clients</div>
-        <div class="chart-sub">Par type de compte</div>
+        <div class="chart-sub">Par secteur</div>
       </div>
     </div>
     <div class="donut-wrap">
@@ -1670,5 +1670,59 @@
 
 
 
+<script>
+/* Données réelles : KPI + donut par secteur, calculés depuis Supabase. */
+(function(){
+  if(!window.BC) return;
+  BC.ready().then(function(){
+    var clients=BC.clients.all(), docs=BC.docs.all();
+    var devis=docs.filter(function(d){return d.type==='devis';});
+    var factures=docs.filter(function(d){return d.type==='facture';});
+    var revenu=factures.reduce(function(s,d){return s+(Number(d.ttc)||0);},0);
+    var conv=devis.length?Math.round(factures.length/devis.length*100):0;
+    var eur=function(n){ return Math.round(n).toLocaleString('fr-FR')+' €'; };
+    document.querySelectorAll('.dash-kpis .kpi').forEach(function(k){
+      var lbl=((k.querySelector('.kpi-label')||{}).textContent||'');
+      var val=k.querySelector('.kpi-val'); var delta=k.querySelector('.kpi-delta');
+      if(delta) delta.remove();
+      if(!val) return;
+      if(/revenu/i.test(lbl)) val.textContent=eur(revenu);
+      else if(/devis/i.test(lbl)) val.textContent=devis.length;
+      else if(/clients/i.test(lbl)) val.textContent=clients.length;
+      else if(/conversion/i.test(lbl)) val.textContent=conv+' %';
+    });
+    var donut=document.getElementById('chart-donut'), legend=document.getElementById('donut-legend');
+    if(donut){
+      var NS='http://www.w3.org/2000/svg';
+      var bySec={}; clients.forEach(function(c){ var s=c.secteur||'Autre'; bySec[s]=(bySec[s]||0)+1; });
+      var entries=Object.keys(bySec).map(function(k){return {name:k,val:bySec[k]};}).sort(function(a,b){return b.val-a.val;});
+      var total=entries.reduce(function(s,e){return s+e.val;},0)||1;
+      var COL={'Santé':'#6C4DF0','Banque':'#22C2E0','Viticole':'#16A34A','Assurance':'#C32FB8','Restauration':'#F5A623','Autre':'#9A96A8'};
+      var palette=['#6C4DF0','#22C2E0','#16A34A','#C32FB8','#F5A623','#9A96A8','#E5484D'];
+      donut.innerHTML=''; if(legend) legend.innerHTML='';
+      var cx=110,cy=110,r=80,sw=26,circ=2*Math.PI*r,off=0;
+      var bg=document.createElementNS(NS,'circle'); bg.setAttribute('cx',cx);bg.setAttribute('cy',cy);bg.setAttribute('r',r);bg.setAttribute('fill','none');bg.setAttribute('stroke','#EEEAF6');bg.setAttribute('stroke-width',sw); donut.appendChild(bg);
+      entries.forEach(function(e,i){
+        var col=COL[e.name]||palette[i%palette.length];
+        var frac=e.val/total;
+        var c=document.createElementNS(NS,'circle');
+        c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',r);c.setAttribute('fill','none');c.setAttribute('stroke',col);c.setAttribute('stroke-width',sw);
+        c.setAttribute('stroke-dasharray',(frac*circ)+' '+circ);
+        c.setAttribute('stroke-dashoffset',(-off*circ));
+        c.setAttribute('transform','rotate(-90 '+cx+' '+cy+')');
+        c.setAttribute('stroke-linecap','butt');
+        donut.appendChild(c); off+=frac;
+        if(legend){
+          var dl=document.createElement('div'); dl.className='dl';
+          dl.innerHTML='<span class="nm"><span class="dotc" style="background:'+col+'"></span>'+e.name+'</span><span class="v">'+e.val+'</span><span class="p">'+Math.round(frac*100)+'%</span>';
+          legend.appendChild(dl);
+        }
+      });
+      var t=document.createElementNS(NS,'text'); t.setAttribute('x',cx);t.setAttribute('y',cy-2);t.setAttribute('text-anchor','middle');t.setAttribute('font-size','30');t.setAttribute('font-weight','800');t.setAttribute('fill','#1C172E'); t.textContent=String(total); donut.appendChild(t);
+      var t2=document.createElementNS(NS,'text'); t2.setAttribute('x',cx);t2.setAttribute('y',cy+18);t2.setAttribute('text-anchor','middle');t2.setAttribute('font-size','12');t2.setAttribute('fill','#9A96A8'); t2.textContent='clients'; donut.appendChild(t2);
+    }
+  }).catch(function(e){ console.error('[BC] dashboard', e); });
+})();
+</script>
 <script src="mobile-nav.js"></script>
 </body></html>
