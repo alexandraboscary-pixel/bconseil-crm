@@ -1592,7 +1592,8 @@
     BC.ready().then(function(){
       TASKS = BC.tasks.all().map(toMem);
       render();
-      BC.onChange('tasks', function(){ TASKS = BC.tasks.all().map(toMem); render(); });
+      // Pas de re-rendu temps réel ici : TASKS local fait foi pendant la session
+      // (les modifs des autres apparaissent au rechargement) → compteurs stables.
     }).catch(function(e){ console.error('[BC] chargement tâches', e); render(); });
   }
   boot();

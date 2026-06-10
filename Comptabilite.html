@@ -1685,7 +1685,7 @@
         '<span>'+esc(d.societe)+'</span>'+
         '<span class="cpt-muted">'+frDate(d.date)+'</span>'+
         '<span class="dm">'+eur(d.ttc)+'</span>'+
-        '<span>'+pill(d.statut)+'</span>'+
+        '<span>'+pill(d.statut)+' <button type="button" class="cpt-arch" data-arch="'+d.id+'" title="Archiver le document" aria-label="Archiver" style="border:0;background:none;color:#9A96A8;cursor:pointer;padding:2px;vertical-align:middle"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"></rect><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path><path d="M10 12h4"></path></svg></button></span>'+
       '</div>';
     }).join('');
   }
@@ -1732,6 +1732,11 @@
     document.addEventListener('input',function(e){ if(e.target.closest('#cpt-builder')) recalc(); });
     $('cpt-client-sel').addEventListener('change',recalc);
     $('cpt-save').addEventListener('click',save);
+    $('cpt-recent-list').addEventListener('click',function(e){
+      var b=e.target.closest('[data-arch]'); if(!b) return;
+      if(!window.confirm('Archiver ce document ? Il sera retiré de la liste.')) return;
+      BC.docs.remove(b.getAttribute('data-arch')).then(renderRecent).catch(function(err){ console.error('[BC] archive doc', err); });
+    });
     var sm=$('cpt-send-modal');
     sm.addEventListener('click',function(e){ if(e.target===sm || e.target.closest('[data-cpt-send-close]')) closeSent(); });
     $('cpt-send-go').addEventListener('click',doSend);

@@ -115,7 +115,7 @@
       markLocal("clients");
       var ex = clients.bySociete(c.societe);
       var fields = {};
-      ["societe", "contact", "prenom", "nom", "email", "tel", "ville", "secteur", "statut", "devis_date", "montant", "referent", "logo_url", "notes"]
+      ["societe", "contact", "prenom", "nom", "email", "tel", "ville", "secteur", "statut", "devis_date", "montant", "referent", "logo_url", "notes", "history"]
         .forEach(function (k) { if (c[k] !== undefined) fields[k] = c[k]; });
       if (ex) {
         return sb.from("clients").update(fields).eq("id", ex.id).select().single()
@@ -123,6 +123,11 @@
       }
       return sb.from("clients").insert(fields).select().single()
         .then(function (r) { if (r.error) throw r.error; cache.clients.push(r.data); return r.data; });
+    },
+    update: function (id, patch) {
+      markLocal("clients");
+      return sb.from("clients").update(patch).eq("id", id).select().single()
+        .then(function (r) { if (r.error) throw r.error; var ex = cache.clients.filter(function (c) { return c.id === id; })[0]; if (ex) Object.assign(ex, r.data); return ex; });
     },
     updateStatus: function (societe, statut) {
       markLocal("clients");

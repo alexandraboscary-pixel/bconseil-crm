@@ -2086,12 +2086,41 @@
     var spark='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.6 4.8L18 8l-4.4 1.2L12 14l-1.6-4.8L6 8z"></path><path d="M18.5 13l.7 2L21 15.5l-1.8.6-.7 2-.7-2L16 15.5l1.8-.5z"></path></svg>';
     return '<div class="h"><span class="badge">'+spark+' Résumé IA</span><span class="plaud">'+spark+' Plaud</span></div><p>'+txt+'</p>';
   }
-  function renderHistory(msgs){
-    var b=document.getElementById('pm-chat-body');
-    b.innerHTML=msgs.map(function(m){
-      return '<div class="m-msg '+m.side+'"><div class="m-bubble">'+m.text+'</div><div class="m-meta">'+m.meta+'</div></div>';
-    }).join('');
+  function escH(s){ return (s||'').toString().replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var FILE_IC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>';
+  function entryHTML(e,i){
+    var del = e.persist ? '<button type="button" class="m-del" data-del="'+i+'" title="Supprimer" style="margin-left:8px;border:0;background:none;color:var(--ink-400);cursor:pointer;font-size:15px;line-height:1;vertical-align:-1px">×</button>' : '';
+    if(e.k==='file'){
+      return '<div class="m-msg '+(e.side||'out')+'">'
+        +'<div class="m-bubble m-bubble-files"><div class="m-file" data-open="'+i+'" style="cursor:pointer" title="Ouvrir la pièce jointe">'
+        +'<span class="m-file-ic">'+FILE_IC+'</span>'
+        +'<span class="m-file-meta"><span class="fn">'+escH(e.name)+'</span><span class="fs">'+fmtSize(e.size||0)+'</span></span>'
+        +'</div></div><div class="m-meta">'+(e.rawMeta?e.meta:escH(e.meta))+del+'</div></div>';
+    }
+    var body = e.raw ? e.text : escH(e.text);
+    return '<div class="m-msg '+(e.side||'out')+'"><div class="m-bubble">'+body+'</div><div class="m-meta">'+(e.rawMeta?e.meta:escH(e.meta))+del+'</div></div>';
+  }
+  function renderHistory(){
+    var b=document.getElementById('pm-chat-body'); if(!b) return;
+    var entries=modal.__history||[];
+    b.innerHTML=entries.map(entryHTML).join('');
     b.scrollTop=b.scrollHeight;
+  }
+  function persistHistory(){
+    if(modal.__clientId && window.BC){
+      BC.clients.update(modal.__clientId, {history: modal.__history}).catch(function(e){ console.error('[BC] historique', e); });
+    }
+  }
+  function openDataUrl(dataUrl, name){
+    try{
+      var parts=dataUrl.split(','), mime=((parts[0]||'').match(/data:([^;]+)/)||[])[1]||'application/octet-stream';
+      var bin=atob(parts[1]||''), len=bin.length, arr=new Uint8Array(len);
+      for(var i=0;i<len;i++) arr[i]=bin.charCodeAt(i);
+      var url=URL.createObjectURL(new Blob([arr],{type:mime}));
+      var w=window.open(url,'_blank');
+      if(!w){ var a=document.createElement('a'); a.href=url; a.download=name||'piece-jointe'; document.body.appendChild(a); a.click(); a.remove(); }
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+    }catch(err){ console.error(err); }
   }
 
   function setEditUI(on){
@@ -2192,7 +2221,9 @@
 
     modal.__devis={societe:societe, prenom:prenom, nom:nom, email:email, phone:phone, secteur:secteur, devisDate:devisDate, montant:montant, referent:referent, statut:statutDef(statutKey).label};
 
-    renderHistory(buildHistory(societe,contact,statutKey,devisDate,montant));
+    modal.__clientId=(stored && stored.id) ? stored.id : (row.getAttribute('data-id')||null);
+    modal.__history=(stored && stored.history && stored.history.length) ? stored.history.slice() : [];
+    renderHistory();
     var firstName=(contact||'').split(' ')[0]||'';
     var sumEl=document.getElementById('cf-summary'); if(sumEl) sumEl.innerHTML=summaryHTML(firstName, societe, devisDate, fmtMoney(montant), statutKey);
 
@@ -2277,36 +2308,44 @@
   var msgInput=document.getElementById('cf-msg'), sendBtn=document.getElementById('cf-send');
   function addMsg(){
     var v=(msgInput.value||'').trim(); if(!v) return;
-    var b=document.getElementById('pm-chat-body');
     var now=new Date(); var dd=pad(now.getDate())+'/'+pad(now.getMonth()+1)+'/'+now.getFullYear();
-    var div=document.createElement('div'); div.className='m-msg out';
-    div.innerHTML='<div class="m-bubble"></div><div class="m-meta">Vous \u00b7 '+dd+'</div>';
-    div.querySelector('.m-bubble').textContent=v;
-    b.appendChild(div); b.scrollTop=b.scrollHeight; msgInput.value='';
+    if(!modal.__history) modal.__history=[];
+    modal.__history.push({k:'msg', side:'out', text:v, meta:'Vous \u00b7 '+dd, persist:true});
+    renderHistory(); msgInput.value=''; persistHistory();
   }
   sendBtn.addEventListener('click', addMsg);
   msgInput.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); addMsg(); } });
 
   // Attach files via paperclip
   function fmtSize(b){ if(b<1024) return b+' o'; if(b<1048576) return (b/1024).toFixed(0)+' Ko'; return (b/1048576).toFixed(1)+' Mo'; }
+  var MAX_FILE=3*1024*1024;
   function addAttachment(files){
     if(!files || !files.length) return;
-    var b=document.getElementById('pm-chat-body');
     var now=new Date(); var dd=pad(now.getDate())+'/'+pad(now.getMonth()+1)+'/'+now.getFullYear();
-    var div=document.createElement('div'); div.className='m-msg out';
-    var cards='';
+    if(!modal.__history) modal.__history=[];
     [].forEach.call(files,function(f){
-      cards+='<div class="m-file"><span class="m-file-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></span><span class="m-file-meta"><span class="fn"></span><span class="fs">'+fmtSize(f.size)+'</span></span></div>';
+      if(f.size>MAX_FILE){ alert('\u00ab '+f.name+' \u00bb d\u00e9passe 3 Mo et n\u2019a pas \u00e9t\u00e9 joint.'); return; }
+      var rd=new FileReader();
+      rd.onload=function(){
+        modal.__history.push({k:'file', side:'out', name:f.name, size:f.size, dataUrl:rd.result, meta:'Vous \u00b7 '+dd, persist:true});
+        renderHistory(); persistHistory();
+      };
+      rd.readAsDataURL(f);
     });
-    var n=files.length;
-    div.innerHTML='<div class="m-bubble m-bubble-files">'+cards+'</div><div class="m-meta">Vous \u00b7 '+dd+' \u00b7 '+(n>1?n+' pièces jointes':'pièce jointe')+'</div>';
-    var fnEls=div.querySelectorAll('.fn'); [].forEach.call(files,function(f,i){ if(fnEls[i]) fnEls[i].textContent=f.name; });
-    b.appendChild(div); b.scrollTop=b.scrollHeight;
   }
   var fileInput=document.getElementById('cf-file'), attachBtn=document.getElementById('cf-attach');
   if(attachBtn && fileInput){
     attachBtn.addEventListener('click', function(){ fileInput.click(); });
     fileInput.addEventListener('change', function(){ addAttachment(fileInput.files); fileInput.value=''; });
+  }
+  var chatBody=document.getElementById('pm-chat-body');
+  if(chatBody){
+    chatBody.addEventListener('click', function(e){
+      var del=e.target.closest('[data-del]');
+      if(del){ var i=parseInt(del.getAttribute('data-del'),10); if(modal.__history && i>=0){ modal.__history.splice(i,1); renderHistory(); persistHistory(); } return; }
+      var fileEl=e.target.closest('[data-open]');
+      if(fileEl){ var idx=parseInt(fileEl.getAttribute('data-open'),10); var ent=(modal.__history||[])[idx]; if(ent && ent.dataUrl) openDataUrl(ent.dataUrl, ent.name); }
+    });
   }
 
   // Délégation : fonctionne aussi pour les lignes rendues depuis la base.

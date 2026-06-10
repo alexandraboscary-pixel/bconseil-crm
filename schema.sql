@@ -34,6 +34,7 @@ create table if not exists public.clients (
   referent    text,
   logo_url    text,
   notes       text,
+  history     jsonb default '[]'::jsonb,   -- historique d'échanges + pièces jointes
   created_at  timestamptz not null default now()
 );
 -- Empêche les doublons de société (insensible à la casse / espaces)
