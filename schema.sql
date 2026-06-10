@@ -29,6 +29,7 @@ create table if not exists public.clients (
   ville       text,
   adresse     text,
   siret       text,
+  tjm         numeric default 0,           -- tarif journalier (régie) ; 0 = forfait
   secteur     text,
   statut      text not null default 'prospection',
   devis_date  text,                 -- format affiché dd/mm/yyyy

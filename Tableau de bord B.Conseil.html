@@ -1369,11 +1369,16 @@
         .list-card.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));gap:14px;background:transparent;border:0;box-shadow:none;padding:0}
         .list-card.cards .list-head{display:none}
         .list-card.cards .list-foot{grid-column:1/-1}
-        .list-card.cards .row{display:flex!important;flex-direction:column;align-items:flex-start;gap:9px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:15px 16px;box-shadow:0 1px 2px rgba(28,23,46,.05);cursor:pointer;grid-template-columns:none!important}
+        .list-card.cards .row{position:relative;display:flex!important;flex-direction:column;align-items:flex-start;gap:7px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:15px 16px;box-shadow:0 1px 2px rgba(28,23,46,.05);cursor:pointer;grid-template-columns:none!important}
         .list-card.cards .row>div{width:100%}
+        .list-card.cards .row .name{order:1;padding-right:44px}
         .list-card.cards .row .name .n{font-size:15px;font-weight:700}
+        .list-card.cards .row .tags{order:0;position:absolute;top:12px;right:12px;width:auto;margin:0}
+        .list-card.cards .row .cell-statut{order:2}
+        .list-card.cards .row .email{order:3}
+        .list-card.cards .row .phone{order:4}
         .list-card.cards .row .cell-contact{font-size:12.5px;color:var(--ink-500)}
-        .list-card.cards .row .row-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:2px;opacity:1}
+        .list-card.cards .row .row-actions{order:5;display:flex;justify-content:flex-end;gap:6px;margin-top:2px;opacity:1}
       </style>
     </div>
 
@@ -1650,6 +1655,7 @@
             <div class="cf-field"><span class="cf-k">Email</span><span class="cf-v" data-field="email">—</span></div>
             <div class="cf-field"><span class="cf-k">Téléphone</span><span class="cf-v" data-field="tel">—</span></div>
             <div class="cf-field"><span class="cf-k">Secteur</span><span class="cf-v" data-field="secteur">—</span></div>
+            <div class="cf-field"><span class="cf-k">TJM (€/jour)</span><span class="cf-v" data-field="tjm">—</span></div>
           </div>
         </div>
 
@@ -1778,6 +1784,7 @@
         <div class="enr-field"><label for="en-ville">Ville</label><input id="en-ville" type="text" autocomplete="off"></div>
         <div class="enr-field full"><label for="en-adresse">Adresse de facturation</label><input id="en-adresse" type="text" placeholder="N°, rue, code postal, ville" autocomplete="off"></div>
         <div class="enr-field"><label for="en-siret">SIRET</label><input id="en-siret" type="text" placeholder="000 000 000 00000" autocomplete="off"></div>
+        <div class="enr-field"><label for="en-tjm">TJM (€/jour, si facturation en régie)</label><input id="en-tjm" type="number" min="0" step="50" placeholder="0" autocomplete="off"></div>
         <div class="enr-field"><label for="en-proto">Secteur</label><select id="en-proto"><option>Santé</option><option>Banque</option><option>Viticole</option><option>Assurance</option><option>Restauration</option></select></div>
         <div class="enr-field"><label for="en-date">Date de création</label><input id="en-date" type="date"></div>
       </div>
@@ -1824,6 +1831,7 @@
         secteur: (document.getElementById('en-proto').value || 'Santé'),
         adresse: (document.getElementById('en-adresse').value || '').trim(),
         siret: (document.getElementById('en-siret').value || '').trim(),
+        tjm: parseInt(document.getElementById('en-tjm').value,10) || 0,
         date: ((document.getElementById('en-date')||{}).value || '').split('-').reverse().join('/'),
         statut: 'prospection'
       };
@@ -2148,7 +2156,7 @@
   }
 
   function setEditUI(on){
-    ['nom','prenom','societe','email','tel','secteur','devisDate','montant'].forEach(function(f){
+    ['nom','prenom','societe','email','tel','secteur','tjm','devisDate','montant'].forEach(function(f){
       var el=modal.querySelector('[data-field="'+f+'"]');
       if(el){ if(on) el.setAttribute('contenteditable','true'); else el.removeAttribute('contenteditable'); }
     });
@@ -2172,7 +2180,9 @@
     document.getElementById('cf-referent-view').textContent=ref;
     var montantNum=parseInt(getText('montant').replace(/[^0-9]/g,''),10)||0;
     setText('montant', fmtMoney(montantNum));
-    modal.__devis = {societe:societe, prenom:prenom, nom:nom, email:getText('email'), phone:getText('tel'), secteur:getText('secteur'), devisDate:getText('devisDate'), montant:montantNum, referent:ref, statut:statutDef(statutKey).label};
+    var tjmNum=parseInt((getText('tjm')||'').replace(/[^0-9]/g,''),10)||0;
+    setText('tjm', tjmNum?fmtMoney(tjmNum):'—');
+    modal.__devis = {societe:societe, prenom:prenom, nom:nom, email:getText('email'), phone:getText('tel'), secteur:getText('secteur'), devisDate:getText('devisDate'), montant:montantNum, tjm:tjmNum, referent:ref, statut:statutDef(statutKey).label};
     // Persistance en base (la fiche devient un vrai enregistrement CRM).
     if(window.BC && societe){
       var pay={societe:societe, statut:statutKey, referent:ref, montant:montantNum};
@@ -2182,6 +2192,7 @@
       var _t=getText('tel'); if(_t&&_t!=='—') pay.tel=_t;
       var _s=getText('secteur'); if(_s&&_s!=='—') pay.secteur=_s;
       var _d=getText('devisDate'); if(_d&&_d!=='—') pay.devis_date=_d;
+      pay.tjm=tjmNum;
       BC.clients.upsert(pay).catch(function(e){ console.error('[BC] maj fiche', e); });
     }
     if(srcRow){
@@ -2242,6 +2253,7 @@
     setText('nom',nom||'\u2014'); setText('prenom',prenom||'\u2014'); setText('societe',societe);
     setText('email',email); setText('tel',phone||'\u2014'); setText('secteur',secteur||'\u2014');
     setText('devisDate',devisDate||'\u2014'); setText('montant',fmtMoney(montant));
+    setText('tjm', (stored&&Number(stored.tjm)>0)?fmtMoney(Number(stored.tjm)):'\u2014');
 
     modal.__devis={societe:societe, prenom:prenom, nom:nom, email:email, phone:phone, secteur:secteur, devisDate:devisDate, montant:montant, referent:referent, adresse:(stored&&stored.adresse)||'', siret:(stored&&stored.siret)||'', statut:statutDef(statutKey).label};
 

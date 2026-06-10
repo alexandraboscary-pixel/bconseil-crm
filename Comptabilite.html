@@ -1642,6 +1642,24 @@ Hypothèses : volume et critères à préciser lors du cadrage.</textarea></div>
     recalc();
   }
 
+  // Facturation en régie : si le client a un TJM, pré-remplit une ligne au tarif journalier.
+  function applyClientBilling(){
+    if(mode!=='existing') return;
+    var v=$('cpt-client-sel').value; if(!v) return;
+    var c=allClients().filter(function(x){return x.societe===v;})[0];
+    if(!c || !(Number(c.tjm)>0)) return;
+    setType('facture');
+    var first=document.querySelector('#cpt-lines .cpt-line');
+    if(first){
+      first.querySelector('.l-des').value='Prestation en régie — journées ('+c.societe+')';
+      first.querySelector('.l-qte').value='1';
+      first.querySelector('.l-pu').value=Number(c.tjm);
+      var tv=first.querySelector('.l-tva'); if(tv) tv.value='20';
+    }
+    recalc();
+    toast('Client en régie : TJM '+eur(Number(c.tjm))+'/jour — indiquez le nombre de jours dans la quantité.');
+  }
+
   function toast(msg){
     var t=document.createElement('div'); t.textContent=msg;
     t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(8px);background:#2A2834;color:#fff;font:600 13.5px/1.4 "Inter",sans-serif;padding:12px 18px;border-radius:10px;box-shadow:0 8px 28px -8px rgba(42,40,52,.5);z-index:400;opacity:0;transition:opacity .2s ease, transform .2s ease;max-width:min(440px,90vw)';
@@ -1742,7 +1760,7 @@ Hypothèses : volume et critères à préciser lors du cadrage.</textarea></div>
     var due=new Date(); due.setDate(due.getDate()+30); $('cpt-due').value=iso(due);
     resetLines(); fillSelect(); renderRecent();
     setType('devis'); setMode('existing');
-    try{ var _p=new URLSearchParams(location.search), _c=_p.get('client'); if(_c){ var _s=$('cpt-client-sel'); if(_s){ _s.value=_c; recalc(); } } }catch(e){}
+    try{ var _p=new URLSearchParams(location.search), _c=_p.get('client'); if(_c){ var _s=$('cpt-client-sel'); if(_s){ _s.value=_c; applyClientBilling(); recalc(); } } }catch(e){}
     $('cpt-seg').addEventListener('click',function(e){ var b=e.target.closest('button'); if(b) setType(b.dataset.type); });
     $('cpt-mode').addEventListener('click',function(e){ var b=e.target.closest('button'); if(b) setMode(b.dataset.mode); });
     $('cpt-addline').addEventListener('click',addLine);
@@ -1754,7 +1772,7 @@ Hypothèses : volume et critères à préciser lors du cadrage.</textarea></div>
       recalc();
     });
     document.addEventListener('input',function(e){ if(e.target.closest('#cpt-builder')) recalc(); });
-    $('cpt-client-sel').addEventListener('change',recalc);
+    $('cpt-client-sel').addEventListener('change',function(){ applyClientBilling(); recalc(); });
     $('cpt-save').addEventListener('click',save);
     $('cpt-recent-list').addEventListener('click',function(e){
       var b=e.target.closest('[data-arch]'); if(!b) return;
