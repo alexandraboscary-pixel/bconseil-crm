@@ -2159,6 +2159,19 @@
     var referent=REFERENTS[h % REFERENTS.length];
     var statutKey=statutFromRow(row);
 
+    // Priorité aux valeurs ENREGISTRÉES en base (sinon valeurs dérivées par défaut).
+    var stored=(window.BC && row.getAttribute('data-id'))
+      ? BC.clients.all().filter(function(x){ return x.id===row.getAttribute('data-id'); })[0] : null;
+    if(stored){
+      if(stored.montant) montant=stored.montant;
+      if(stored.referent) referent=stored.referent;
+      if(stored.email) email=stored.email;
+      if(stored.secteur) secteur=stored.secteur;
+      if(stored.devis_date) devisDate=stored.devis_date;
+      if(stored.prenom) prenom=stored.prenom;
+      if(stored.nom) nom=stored.nom;
+    }
+
     modal.classList.remove('editing'); setEditUI(false);
 
     document.getElementById('cf-societe').textContent=societe;

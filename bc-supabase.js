@@ -35,6 +35,12 @@
   var cache = { clients: [], documents: [], tasks: [], profile: null };
   var listeners = { clients: [], documents: [], tasks: [] };
   var readyPromise = null;
+  // Anti-rebond : on ignore l'écho realtime de NOS propres écritures pendant un
+  // court instant (le cache local est déjà à jour) → évite que la modif locale
+  // soit annulée par un rechargement DB non encore propagé. Les changements
+  // provenant d'un AUTRE appareil/onglet (autre instance) restent pris en compte.
+  var suppress = { clients: 0, documents: 0, tasks: 0 };
+  function markLocal(table) { suppress[table] = Date.now() + 2500; }
 
   // ---- helpers --------------------------------------------------------------
   function norm(s) { return (s || "").toString().trim().toLowerCase(); }
@@ -85,9 +91,9 @@
   function subscribeRealtime() {
     try {
       sb.channel("bc-db")
-        .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, function () { loadClients().then(function () { emit("clients"); }); })
-        .on("postgres_changes", { event: "*", schema: "public", table: "documents" }, function () { loadDocuments().then(function () { emit("documents"); }); })
-        .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, function () { loadTasks().then(function () { emit("tasks"); }); })
+        .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, function () { if (Date.now() < suppress.clients) return; loadClients().then(function () { emit("clients"); }); })
+        .on("postgres_changes", { event: "*", schema: "public", table: "documents" }, function () { if (Date.now() < suppress.documents) return; loadDocuments().then(function () { emit("documents"); }); })
+        .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, function () { if (Date.now() < suppress.tasks) return; loadTasks().then(function () { emit("tasks"); }); })
         .subscribe();
     } catch (e) { /* realtime non bloquant */ }
   }
@@ -106,6 +112,7 @@
     bySociete: function (s) { var k = norm(s); return cache.clients.filter(function (c) { return norm(c.societe) === k; })[0] || null; },
     // Crée ou met à jour un client (dédup par société, comme l'app d'origine).
     upsert: function (c) {
+      markLocal("clients");
       var ex = clients.bySociete(c.societe);
       var fields = {};
       ["societe", "contact", "prenom", "nom", "email", "tel", "ville", "secteur", "statut", "devis_date", "montant", "referent", "logo_url", "notes"]
@@ -118,12 +125,14 @@
         .then(function (r) { if (r.error) throw r.error; cache.clients.push(r.data); return r.data; });
     },
     updateStatus: function (societe, statut) {
+      markLocal("clients");
       var ex = clients.bySociete(societe);
       if (!ex) return Promise.resolve(null);
       return sb.from("clients").update({ statut: statut }).eq("id", ex.id).select().single()
         .then(function (r) { if (r.error) throw r.error; ex.statut = statut; return ex; });
     },
     remove: function (id) {
+      markLocal("clients");
       return sb.from("clients").delete().eq("id", id)
         .then(function (r) { if (r.error) throw r.error; cache.clients = cache.clients.filter(function (c) { return c.id !== id; }); });
     }
@@ -133,10 +142,12 @@
   var docs = {
     all: function () { return cache.documents; },
     create: function (d) {
+      markLocal("documents");
       return sb.from("documents").insert(d).select().single()
         .then(function (r) { if (r.error) throw r.error; cache.documents.push(r.data); return r.data; });
     },
     markSent: function (id, email) {
+      markLocal("documents");
       return sb.from("documents").update({ sent: true, sent_to: email }).eq("id", id).select().single()
         .then(function (r) {
           if (r.error) throw r.error;
@@ -146,6 +157,7 @@
         });
     },
     remove: function (id) {
+      markLocal("documents");
       return sb.from("documents").delete().eq("id", id)
         .then(function (r) { if (r.error) throw r.error; cache.documents = cache.documents.filter(function (x) { return x.id !== id; }); });
     }
@@ -155,10 +167,12 @@
   var tasks = {
     all: function () { return cache.tasks; },
     create: function (t) {
+      markLocal("tasks");
       return sb.from("tasks").insert(t).select().single()
         .then(function (r) { if (r.error) throw r.error; cache.tasks.push(r.data); return r.data; });
     },
     update: function (id, patch) {
+      markLocal("tasks");
       return sb.from("tasks").update(patch).eq("id", id).select().single()
         .then(function (r) {
           if (r.error) throw r.error;
@@ -171,11 +185,13 @@
       return tasks.update(id, { col: col, position: position });
     },
     remove: function (id) {
+      markLocal("tasks");
       return sb.from("tasks").delete().eq("id", id)
         .then(function (r) { if (r.error) throw r.error; cache.tasks = cache.tasks.filter(function (x) { return x.id !== id; }); });
     },
     // Sauvegarde l'ordre + la colonne de toutes les cartes (après drag & drop).
     reorder: function (items) {
+      markLocal("tasks");
       var ups = items.map(function (it) { return sb.from("tasks").update({ col: it.col, position: it.position }).eq("id", it.id); });
       items.forEach(function (it) { var t = cache.tasks.filter(function (x) { return x.id === it.id; })[0]; if (t) { t.col = it.col; t.position = it.position; } });
       return Promise.all(ups);
