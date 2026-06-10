@@ -1669,6 +1669,15 @@
             </div>
             <button class="cf-pdf" id="cf-pdf" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg> Voir le devis (PDF)</button>
             <div id="cf-doc-list" style="display:flex;flex-direction:column;gap:10px;margin-top:2px"></div>
+            <div id="cf-regie" style="display:none;margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:13px 14px;background:#FBFAFE">
+              <div style="font-size:12.5px;font-weight:700;color:var(--ink-700);margin-bottom:9px">Facturation en régie (TJM)</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <label for="cf-regie-days" style="font-size:12.5px;color:var(--ink-500)">Nombre de jours</label>
+                <input id="cf-regie-days" type="number" min="0" step="0.5" value="1" style="width:84px;height:36px;border:1px solid var(--line);border-radius:8px;padding:0 10px;font:inherit">
+                <button type="button" id="cf-regie-devis" style="height:36px;padding:0 13px;border:1px solid var(--cal-teal,#36B2B7);background:#fff;color:var(--cal-teal-700,#1f8b8f);border-radius:9px;font:inherit;font-weight:700;font-size:12.5px;cursor:pointer">Générer un devis</button>
+                <button type="button" id="cf-regie-fac" style="height:36px;padding:0 13px;border:0;background:#6C4DF0;color:#fff;border-radius:9px;font:inherit;font-weight:700;font-size:12.5px;cursor:pointer">Générer une facture</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2182,6 +2191,7 @@
     var tjmNum=parseInt((getText('tjm')||'').replace(/[^0-9]/g,''),10)||0;
     setText('tjm', tjmNum?fmtMoney(tjmNum):'—');
     modal.__devis = {societe:societe, prenom:prenom, nom:nom, email:getText('email'), phone:getText('tel'), secteur:getText('secteur'), devisDate:getText('devisDate'), montant:montantNum, tjm:tjmNum, referent:ref, statut:statutDef(statutKey).label};
+    updateRegie();
     // Persistance en base (la fiche devient un vrai enregistrement CRM).
     if(window.BC && societe){
       var pay={societe:societe, statut:statutKey, referent:ref, montant:montantNum};
@@ -2263,6 +2273,7 @@
     modal.__history=(stored && stored.history && stored.history.length) ? stored.history.slice() : [];
     renderHistory();
     renderClientDocs(societe);
+    updateRegie();
     var firstName=(contact||'').split(' ')[0]||'';
     var sumEl=document.getElementById('cf-summary'); if(sumEl) sumEl.innerHTML=summaryHTML(firstName, societe, devisDate, fmtMoney(montant), statutKey);
 
@@ -2431,6 +2442,38 @@
         BC.docs.remove(id).then(function(){ renderClientDocs(d.societe); }).catch(function(err){ console.error(err); });
       }
     });
+  })();
+
+  // ---- Facturation en régie (TJM) : générer un devis/facture par nombre de jours ----
+  function updateRegie(){
+    var box=document.getElementById('cf-regie'); if(!box) return;
+    var tjm=(modal.__devis&&Number(modal.__devis.tjm))||0;
+    box.style.display = tjm>0 ? '' : 'none';
+  }
+  function genRegie(type){
+    var cl=modal.__devis||{}; var tjm=Number(cl.tjm)||0;
+    if(!(tjm>0)){ alert('Ce client n’a pas de TJM défini (renseignez-le via ✏️).'); return; }
+    var days=parseFloat((document.getElementById('cf-regie-days')||{}).value)||0;
+    if(days<=0){ alert('Indiquez un nombre de jours.'); return; }
+    if(!window.BC){ return; }
+    var ht=days*tjm, tva=Math.round(ht*0.2), ttc=ht+tva;
+    var pre=type==='facture'?'FAC':'DEV';
+    var n=BC.docs.all().filter(function(d){return d.type===type;}).length+1;
+    var numero=pre+'-2026-'+String(n).padStart(3,'0');
+    var d=new Date(), iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    var label=days>1?'jours':'jour';
+    var doc={ type:type, numero:numero, societe:cl.societe||'', contact:((cl.prenom||'')+' '+(cl.nom||'')).trim(), date:iso,
+      ht:ht, tva:tva, ttc:ttc, statut:type, lines:[{des:'Prestation en régie — '+days+' '+label+' × '+tjm+' €', qte:days, pu:tjm, tva:20}],
+      meta:{ objet:'Prestation en régie ('+days+' '+label+' au TJM)', validite:'30 jours', referent:cl.referent||'' } };
+    BC.docs.create(doc).then(function(saved){
+      renderClientDocs(cl.societe);
+      var w=window.open('','_blank'); if(w){ w.document.open(); w.document.write(devisHtml(Object.assign({}, cl, {societe:saved.societe, devisDate:frD(saved.date), __numero:saved.numero, __ht:saved.ht, __tva:saved.tva, __ttc:saved.ttc, __lines:saved.lines, meta:saved.meta}))); w.document.close(); }
+    }).catch(function(e){ console.error('[BC] régie', e); alert('Erreur : '+(e.message||e)); });
+  }
+  (function(){
+    var bd=document.getElementById('cf-regie-devis'), bf=document.getElementById('cf-regie-fac');
+    if(bd) bd.addEventListener('click', function(){ genRegie('devis'); });
+    if(bf) bf.addEventListener('click', function(){ genRegie('facture'); });
   })();
 
   // Add exchange
