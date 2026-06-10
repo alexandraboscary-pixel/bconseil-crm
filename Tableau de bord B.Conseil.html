@@ -1757,6 +1757,8 @@
         <div class="enr-field"><label for="en-tel">Téléphone <span class="req">*</span></label><input id="en-tel" type="tel" placeholder="+33 6 12 34 56 78" autocomplete="off" required=""></div>
         <div class="enr-field"><label for="en-dob">Email</label><input id="en-dob" type="email" placeholder="contact@societe.com" autocomplete="off"></div>
         <div class="enr-field"><label for="en-ville">Ville</label><input id="en-ville" type="text" autocomplete="off"></div>
+        <div class="enr-field full"><label for="en-adresse">Adresse de facturation</label><input id="en-adresse" type="text" placeholder="N°, rue, code postal, ville" autocomplete="off"></div>
+        <div class="enr-field"><label for="en-siret">SIRET</label><input id="en-siret" type="text" placeholder="000 000 000 00000" autocomplete="off"></div>
         <div class="enr-field"><label for="en-proto">Secteur</label><select id="en-proto"><option>Santé</option><option>Banque</option><option>Viticole</option><option>Assurance</option><option>Restauration</option></select></div>
         <div class="enr-field"><label for="en-date">Date de création</label><input id="en-date" type="date"></div>
       </div>
@@ -1801,6 +1803,8 @@
         email: (document.getElementById('en-dob').value || '').trim(),
         ville: (document.getElementById('en-ville').value || '').trim(),
         secteur: (document.getElementById('en-proto').value || 'Santé'),
+        adresse: (document.getElementById('en-adresse').value || '').trim(),
+        siret: (document.getElementById('en-siret').value || '').trim(),
         date: ((document.getElementById('en-date')||{}).value || '').split('-').reverse().join('/'),
         statut: 'prospection'
       };
@@ -2220,7 +2224,7 @@
     setText('email',email); setText('tel',phone||'\u2014'); setText('secteur',secteur||'\u2014');
     setText('devisDate',devisDate||'\u2014'); setText('montant',fmtMoney(montant));
 
-    modal.__devis={societe:societe, prenom:prenom, nom:nom, email:email, phone:phone, secteur:secteur, devisDate:devisDate, montant:montant, referent:referent, statut:statutDef(statutKey).label};
+    modal.__devis={societe:societe, prenom:prenom, nom:nom, email:email, phone:phone, secteur:secteur, devisDate:devisDate, montant:montant, referent:referent, adresse:(stored&&stored.adresse)||'', siret:(stored&&stored.siret)||'', statut:statutDef(statutKey).label};
 
     modal.__clientId=(stored && stored.id) ? stored.id : (row.getAttribute('data-id')||null);
     modal.__history=(stored && stored.history && stored.history.length) ? stored.history.slice() : [];
@@ -2323,7 +2327,7 @@
     +'<div class="addr">9 rue du Général de Larminat · 75015 Paris<br>SIRET 480 778 083 00018<br>contact@b-conseil.com</div></div>'
     +'<div class="docmeta"><h1>DEVIS</h1><p>N° <b>'+e(ref)+'</b></p><p>Date <b>'+e(d.devisDate||'')+'</b></p><p>Validité <b>'+e(validite)+'</b></p></div></div>'
     +'<div class="parties"><div class="box"><h3>PRESTATAIRE</h3><p class="nm">B.Conseil</p><p>Duo Product Design / développeur + consultant IA</p><p style="color:#6A667A">Référent : '+e(referent)+'</p></div>'
-    +'<div class="box"><h3>CLIENT</h3><p class="cl">'+e(d.societe||'')+'</p><p class="cl">'+e(((d.prenom||'')+' '+(d.nom||'')).trim())+'</p></div></div>'
+    +'<div class="box"><h3>CLIENT</h3><p class="cl">'+e(d.societe||'')+'</p><p class="cl">'+e(((d.prenom||'')+' '+(d.nom||'')).trim())+'</p>'+(d.adresse?'<p style="color:#6A667A;font-size:13px;margin-top:4px">'+e(d.adresse)+'</p>':'')+(d.siret?'<p style="color:#6A667A;font-size:12.5px">SIRET '+e(d.siret)+'</p>':'')+'</div></div>'
     +'<div class="sec"><h2>OBJET DU DEVIS</h2><div class="objet">'+e(objet)+'</div></div>'
     +'<div class="sec"><h2>PÉRIMÈTRE DE LA PRESTATION</h2><div class="perim"><ul class="col-in">'+liIn+'</ul><ul class="col-out">'+liOut+'</ul></div></div>'
     +'<div class="sec"><table><thead><tr><th>Prestation</th><th class="r">Qté</th><th class="r">PU HT</th><th class="r">Montant HT</th></tr></thead><tbody>'+rows+'</tbody></table>'

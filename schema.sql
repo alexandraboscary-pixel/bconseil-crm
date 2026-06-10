@@ -27,6 +27,8 @@ create table if not exists public.clients (
   email       text,
   tel         text,
   ville       text,
+  adresse     text,
+  siret       text,
   secteur     text,
   statut      text not null default 'prospection',
   devis_date  text,                 -- format affiché dd/mm/yyyy

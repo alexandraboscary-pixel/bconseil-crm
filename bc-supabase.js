@@ -115,7 +115,7 @@
       markLocal("clients");
       var ex = clients.bySociete(c.societe);
       var fields = {};
-      ["societe", "contact", "prenom", "nom", "email", "tel", "ville", "secteur", "statut", "devis_date", "montant", "referent", "logo_url", "notes", "history"]
+      ["societe", "contact", "prenom", "nom", "email", "tel", "ville", "secteur", "statut", "devis_date", "montant", "referent", "logo_url", "notes", "history", "adresse", "siret"]
         .forEach(function (k) { if (c[k] !== undefined) fields[k] = c[k]; });
       if (ex) {
         return sb.from("clients").update(fields).eq("id", ex.id).select().single()
