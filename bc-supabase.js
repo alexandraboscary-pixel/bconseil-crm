@@ -257,4 +257,35 @@
     var el = e.target && e.target.closest && e.target.closest(".logout, .pf-logout, [data-bc-logout]");
     if (el) { e.preventDefault(); auth.signOut(); }
   });
+
+  // ---- Identité affichée (barre latérale) -----------------------------------
+  // Remplace le nom/rôle/email codés en dur par ceux de l'utilisateur connecté.
+  function initials(name) {
+    var w = (name || "").trim().split(/\s+/).filter(Boolean);
+    if (!w.length) return "?";
+    return ((w[0][0] || "") + (w.length > 1 ? w[w.length - 1][0] : "")).toUpperCase();
+  }
+  function setTxt(sel, val) {
+    var el = document.querySelector(sel);
+    if (el && val != null && val !== "") el.textContent = val;
+  }
+  function applyIdentity() {
+    return profile.get().then(function (p) {
+      if (!p) return;
+      var name = p.name || (p.email ? p.email.split("@")[0] : "");
+      var first = (name || "").split(" ")[0] || name;
+      var role = p.role || "Membre B.Conseil";
+      setTxt(".sidebar-bottom .me .name", first);
+      setTxt(".sidebar-bottom .me .role", role);
+      setTxt(".sidebar-bottom .me .avatar", initials(name));
+      setTxt(".user-menu .um-mail", p.email);
+      setTxt(".user-menu .um-id", role);
+    }).catch(function (e) { console.error("[BC] identity", e); });
+  }
+  BC.applyIdentity = applyIdentity;
+
+  if (!window.BC_NO_GUARD) {
+    if (document.readyState !== "loading") applyIdentity();
+    else document.addEventListener("DOMContentLoaded", applyIdentity);
+  }
 })();
