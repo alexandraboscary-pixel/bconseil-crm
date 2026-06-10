@@ -2271,42 +2271,67 @@
     var ht=(d.__ht!=null)?Number(d.__ht):(d.montant||0);
     var tva=(d.__tva!=null)?Number(d.__tva):Math.round(ht*0.2);
     var ttc=(d.__ttc!=null)?Number(d.__ttc):(ht+tva);
-    var euro=function(n){ return Number(n).toLocaleString('fr-FR')+' \u20ac'; };
-    var rowsHtml='';
-    if(d.__lines && d.__lines.length){
-      d.__lines.forEach(function(l){ var q=Number(l.qte)||1, pu=Number(l.pu)||0; var des=(l.des||'Prestation').toString().replace(/[&<>]/g,''); rowsHtml+='<tr><td><strong>'+des+'</strong></td><td class="r">'+q+'</td><td class="r">'+euro(q*pu)+'</td></tr>'; });
-    } else {
-      rowsHtml='<tr><td><strong>'+(d.secteur?d.secteur+' \u2014 ':'')+'Mission '+(d.referent?'(r\u00e9f. '+d.referent+')':'')+'</strong><br><span style="color:#9A96A8;font-size:12.5px">Accompagnement B.Conseil sur le projet</span></td><td class="r">1</td><td class="r">'+euro(ht)+'</td></tr>';
-    }
+    var euro=function(n){ return Number(n||0).toLocaleString('fr-FR')+' €'; };
+    var e=function(s){ return (s||'').toString().replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); };
+    var meta=d.meta||{};
+    var referent=meta.referent||d.referent||'François Boscary';
+    var validite=meta.validite||'30 jours';
+    var objet=meta.objet||d.objet||'Accompagnement B.Conseil sur le projet.';
+    var DEF_IN=['Cadrage & conception du process','Automatisations (Make/n8n + Claude API)','Classement & nommage automatique des documents','Synthèses, analyses & rapports générés par IA','Tests, documentation & formation'];
+    var DEF_OUT=["Coûts d'API à l'usage (Claude, OCR) & abonnements",'Licences logicielles tierces','Stockage & hébergement des données','Maintenance évolutive au-delà de la garantie'];
+    var DEF_COND=['Règlement : Acompte de 30 % à la commande ('+euro(Math.round(ttc*0.3))+'), solde par jalons à la livraison de chaque lot.','Délai estimatif : à compter du cadrage, selon disponibilités et réactivité sur les retours.','Coûts récurrents : abonnements et API à la charge du client ou refacturés au réel.','Confidentialité : données traitées dans le respect du RGPD (accès restreints).','Hypothèses : volume et critères à préciser lors du cadrage — susceptibles d’ajuster le chiffrage.'];
+    var pin=(meta.perimetre_in&&meta.perimetre_in.length)?meta.perimetre_in:DEF_IN;
+    var pout=(meta.perimetre_out&&meta.perimetre_out.length)?meta.perimetre_out:DEF_OUT;
+    var conds=(meta.conditions&&meta.conditions.length)?meta.conditions:DEF_COND;
+    var rows='';
+    if(d.__lines && d.__lines.length){ d.__lines.forEach(function(l){ var q=Number(l.qte)||1, pu=Number(l.pu)||0; rows+='<tr><td>'+e(l.des||'Prestation')+'</td><td class="r">'+q+'</td><td class="r">'+euro(pu)+'</td><td class="r">'+euro(q*pu)+'</td></tr>'; }); }
+    else { rows='<tr><td>'+e(objet)+'</td><td class="r">1</td><td class="r">'+euro(ht)+'</td><td class="r">'+euro(ht)+'</td></tr>'; }
+    var liIn=pin.map(function(x){ return '<li><span class="ok">✓</span> '+e(x)+'</li>'; }).join('');
+    var liOut=pout.map(function(x){ return '<li><span class="no">✗</span> '+e(x)+'</li>'; }).join('');
+    var liCond=conds.map(function(x){ return '<li>'+e(x)+'</li>'; }).join('');
     return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Devis '+ref+'</title>'
-    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1C172E;background:#F6F4FB;padding:40px}'
-    +'.sheet{max-width:760px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 10px 40px -16px rgba(28,23,46,.2);overflow:hidden}'
-    +'.top{display:flex;justify-content:space-between;align-items:flex-start;padding:34px 40px;border-bottom:3px solid #6C4DF0}'
-    +'.brand{font-weight:800;font-size:26px;letter-spacing:-.02em}.brand span{color:#6C4DF0}'
-    +'.brand small{display:block;font-size:12px;font-weight:500;color:#6A667A;letter-spacing:0;margin-top:4px}'
-    +'.docmeta{text-align:right}.docmeta h1{font-size:20px;font-weight:800;color:#6C4DF0}.docmeta p{font-size:13px;color:#6A667A;margin-top:4px}'
-    +'.parties{display:flex;justify-content:space-between;gap:24px;padding:28px 40px;background:#FBFAFE}'
-    +'.parties h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#9A96A8;margin-bottom:8px}'
-    +'.parties p{font-size:14px;line-height:1.6}.parties .nm{font-weight:700}'
-    +'table{width:100%;border-collapse:collapse;margin:8px 0}'
-    +'th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#9A96A8;padding:14px 40px;border-bottom:1px solid #ECE9F3}'
-    +'th.r,td.r{text-align:right}td{padding:18px 40px;font-size:14px;border-bottom:1px solid #ECE9F3}'
-    +'.tot{padding:18px 40px;margin-left:auto;width:300px}'
-    +'.tot div{display:flex;justify-content:space-between;font-size:14px;padding:7px 0;color:#46415E}'
-    +'.tot .ttc{font-size:18px;font-weight:800;color:#1C172E;border-top:2px solid #ECE9F3;margin-top:6px;padding-top:12px}'
-    +'.foot{padding:22px 40px 34px;color:#9A96A8;font-size:12px;line-height:1.6;border-top:1px solid #ECE9F3}'
-    +'.bar{padding:16px 40px;background:#ECE7FD;display:flex;justify-content:space-between;align-items:center}'
-    +'.bar button{background:#6C4DF0;color:#fff;border:0;border-radius:10px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer}'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1C172E;background:#F6F4FB;padding:36px}'
+    +'.sheet{max-width:820px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 10px 40px -16px rgba(28,23,46,.2);overflow:hidden}'
+    +'.bar{padding:14px 40px;background:#ECE7FD;display:flex;justify-content:space-between;align-items:center}'
+    +'.bar button{background:#1457C8;color:#fff;border:0;border-radius:9px;padding:9px 16px;font-weight:700;font-size:13px;cursor:pointer}'
+    +'.head{display:flex;justify-content:space-between;align-items:flex-start;padding:32px 40px 18px}'
+    +'.brand{font-weight:800;font-size:26px;letter-spacing:-.02em}'
+    +'.addr{margin-top:12px;font-size:12.5px;color:#6A667A;line-height:1.7}'
+    +'.docmeta{text-align:right}.docmeta h1{font-size:26px;font-weight:800;color:#1457C8}'
+    +'.docmeta p{font-size:13px;color:#46415E;margin-top:6px}.docmeta b{color:#1C172E}'
+    +'.parties{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:6px 40px 22px}'
+    +'.box{border:1px solid #D8D5E4;border-radius:8px;padding:14px 16px}'
+    +'.box h3{font-size:12px;font-weight:800;color:#1457C8;letter-spacing:.04em;margin-bottom:8px}'
+    +'.box p{font-size:14px;line-height:1.55}.box .nm{font-weight:700}.box .cl{color:#C0392B;font-weight:700}'
+    +'.sec{padding:0 40px 6px}.sec h2{font-size:13px;font-weight:800;color:#1B3A6B;letter-spacing:.03em;margin:18px 0 10px}'
+    +'.objet{background:#EEF2FB;border-radius:6px;padding:14px 16px;font-size:13.5px;line-height:1.6}'
+    +'.perim{display:grid;grid-template-columns:1fr 1fr;gap:30px}'
+    +'.perim ul{list-style:none}.perim li{font-size:13px;padding:5px 0;display:flex;gap:8px;align-items:flex-start}'
+    +'.ok{color:#16A34A;font-weight:800}.no{color:#C0392B;font-weight:800}.perim .col-out li{color:#C0392B}'
+    +'table{width:100%;border-collapse:collapse;margin:6px 0}'
+    +'th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#9A96A8;padding:8px 0;border-bottom:1px solid #ECE9F3}'
+    +'th.r,td.r{text-align:right}td{padding:11px 0;font-size:13.5px;border-bottom:1px solid #ECE9F3}'
+    +'.tot{margin:8px 0 0 auto;width:280px}.tot div{display:flex;justify-content:space-between;font-size:13.5px;padding:5px 0;color:#46415E}'
+    +'.tot .ttc{font-size:17px;font-weight:800;color:#1C172E;border-top:2px solid #ECE9F3;margin-top:4px;padding-top:10px}'
+    +'.cond ul{list-style:none}.cond li{font-size:13px;line-height:1.55;padding:5px 0 5px 16px;position:relative}.cond li:before{content:"•";position:absolute;left:0;color:#1457C8}'
+    +'.accord{margin:14px 40px 0;border:1px solid #D8D5E4;border-radius:8px;min-height:90px;padding:12px 14px;color:#9A96A8;font-size:13px}'
+    +'.foot{padding:20px 40px 30px;color:#9A96A8;font-size:11.5px;line-height:1.6}'
     +'@media print{body{background:#fff;padding:0}.sheet{box-shadow:none;border-radius:0}.bar{display:none}}</style></head><body>'
-    +'<div class="sheet"><div class="bar"><span style="font-size:13px;color:#5634C9;font-weight:600">Aper\u00e7u du devis \u2014 imprimez ou enregistrez en PDF</span><button onclick="window.print()">Imprimer / PDF</button></div>'
-    +'<div class="top"><div class="brand">B<span>.</span>Conseil<small>Agence dev, IA &amp; design</small></div>'
-    +'<div class="docmeta"><h1>DEVIS</h1><p>R\u00e9f. '+ref+'</p><p>Date : '+(d.devisDate||'')+'</p></div></div>'
-    +'<div class="parties"><div><h3>\u00c9metteur</h3><p class="nm">B.Conseil</p><p>9 rue du G\u00e9n\u00e9ral de Larminat<br>75015 Paris<br>SIRET 480 778 083 00018<br>contact@b-conseil.com</p></div>'
-    +'<div style="text-align:right"><h3>Client</h3><p class="nm">'+(d.societe||'')+'</p><p>'+((d.prenom||'')+' '+(d.nom||'')).trim()+'<br>'+(d.email||'')+'<br>'+(d.phone||'')+'</p></div></div>'
-    +'<table><thead><tr><th>Prestation</th><th class="r">Qt\u00e9</th><th class="r">Montant HT</th></tr></thead>'
-    +'<tbody>'+rowsHtml+'</tbody></table>'
-    +'<div class="tot"><div><span>Total HT</span><span>'+euro(ht)+'</span></div><div><span>TVA 20%</span><span>'+euro(tva)+'</span></div><div class="ttc"><span>Total TTC</span><span>'+euro(ttc)+'</span></div></div>'
-    +'<div class="foot">Devis valable 30 jours \u00e0 compter de sa date d\u2019\u00e9mission. R\u00e8glement \u00e0 30 jours. B.Conseil \u2014 9 rue du G\u00e9n\u00e9ral de Larminat, 75015 Paris \u2014 SIRET 480 778 083 00018 \u2014 contact@b-conseil.com</div></div></body></html>';
+    +'<div class="sheet">'
+    +'<div class="bar"><span style="font-size:13px;color:#1457C8;font-weight:600">Aperçu du devis — imprimez ou enregistrez en PDF</span><button onclick="window.print()">Imprimer / PDF</button></div>'
+    +'<div class="head"><div><div class="brand">B<span style="color:#1457C8">.</span>Conseil</div>'
+    +'<div class="addr">9 rue du Général de Larminat · 75015 Paris<br>SIRET 480 778 083 00018<br>contact@b-conseil.com</div></div>'
+    +'<div class="docmeta"><h1>DEVIS</h1><p>N° <b>'+e(ref)+'</b></p><p>Date <b>'+e(d.devisDate||'')+'</b></p><p>Validité <b>'+e(validite)+'</b></p></div></div>'
+    +'<div class="parties"><div class="box"><h3>PRESTATAIRE</h3><p class="nm">B.Conseil</p><p>Duo Product Design / développeur + consultant IA</p><p style="color:#6A667A">Référent : '+e(referent)+'</p></div>'
+    +'<div class="box"><h3>CLIENT</h3><p class="cl">'+e(d.societe||'')+'</p><p class="cl">'+e(((d.prenom||'')+' '+(d.nom||'')).trim())+'</p></div></div>'
+    +'<div class="sec"><h2>OBJET DU DEVIS</h2><div class="objet">'+e(objet)+'</div></div>'
+    +'<div class="sec"><h2>PÉRIMÈTRE DE LA PRESTATION</h2><div class="perim"><ul class="col-in">'+liIn+'</ul><ul class="col-out">'+liOut+'</ul></div></div>'
+    +'<div class="sec"><table><thead><tr><th>Prestation</th><th class="r">Qté</th><th class="r">PU HT</th><th class="r">Montant HT</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div class="tot"><div><span>Total HT</span><span>'+euro(ht)+'</span></div><div><span>TVA 20 %</span><span>'+euro(tva)+'</span></div><div class="ttc"><span>Total TTC</span><span>'+euro(ttc)+'</span></div></div></div>'
+    +'<div class="sec"><h2>CONDITIONS</h2><div class="cond"><ul>'+liCond+'</ul></div></div>'
+    +'<div class="sec"><h2>BON POUR ACCORD — CLIENT</h2></div><div class="accord">Date, signature et mention « Bon pour accord »</div>'
+    +'<div class="foot">B.Conseil — 9 rue du Général de Larminat, 75015 Paris — SIRET 480 778 083 00018 — contact@b-conseil.com</div>'
+    +'</div></body></html>';
   }
   document.getElementById('cf-pdf').addEventListener('click', function(){
     var w=window.open('','_blank');
@@ -2350,7 +2375,7 @@
       var act=btn.getAttribute('data-docact');
       if(act==='view'){
         var w=window.open('','_blank'); if(!w) return;
-        w.document.open(); w.document.write(devisHtml(Object.assign({}, cl, {societe:d.societe, devisDate:frD(d.date), __numero:d.numero, __ht:d.ht, __tva:d.tva, __ttc:d.ttc, __lines:d.lines}))); w.document.close();
+        w.document.open(); w.document.write(devisHtml(Object.assign({}, cl, {societe:d.societe, devisDate:frD(d.date), __numero:d.numero, __ht:d.ht, __tva:d.tva, __ttc:d.ttc, __lines:d.lines, meta:d.meta}))); w.document.close();
       } else if(act==='resend'){
         var em=window.prompt('Renvoyer « '+(d.numero||'le devis')+' » à :', cl.email||'');
         if(!em) return;
