@@ -1430,6 +1430,8 @@
 
   var board=document.getElementById('kanban');
   var dragged=null, editingId=null, detailId=null;
+  // Filtre de colonne actif depuis la barre latérale (null = toutes les colonnes).
+  var currentView=null;
 
   function fmtDue(iso){
     if(!iso) return '';
@@ -1471,7 +1473,9 @@
 
   function render(){
     board.innerHTML='';
-    COLS.forEach(function(c){
+    board.classList.toggle('kb-one', !!currentView);
+    var cols = currentView ? COLS.filter(function(c){return c.key===currentView;}) : COLS;
+    cols.forEach(function(c){
       var col=document.createElement('div'); col.className='kb-col'; col.setAttribute('data-col',c.key);
       col.innerHTML='<div class="kb-col-head"><span class="dotc" style="background:'+c.color+'"></span>'+c.label+'<span class="cnt">0</span></div><div class="kb-list"></div><button class="kb-add" type="button">+ Ajouter une tâche</button>';
       var list=col.querySelector('.kb-list');
@@ -1486,11 +1490,13 @@
   }
   function recount(){
     board.querySelectorAll('.kb-col').forEach(function(col){ col.querySelector('.cnt').textContent=col.querySelectorAll('.kb-card').length; });
-    // Compteurs des « Vues » dans la barre latérale (selon les tâches réelles).
+    // Compteurs des « Vues » dans la barre latérale (selon les tâches réelles)
+    // + surbrillance du filtre actif.
     document.querySelectorAll('.sidebar .filter.view[data-col]').forEach(function(v){
       var key=v.getAttribute('data-col');
       var c=v.querySelector('.count');
       if(c) c.textContent=TASKS.filter(function(t){return t.col===key;}).length;
+      v.classList.toggle('vactive', currentView===key);
     });
   }
   function getAfter(list,y){
@@ -1587,7 +1593,24 @@
   document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ closeForm(); closeDetail(); } });
   document.getElementById('kb-new-btn').addEventListener('click',function(){ openForm(null,'todo'); });
 
+  // Clic sur un filtre de la barre latérale : n'afficher que cette colonne
+  // (re-clic sur le filtre actif = afficher toutes les colonnes).
+  function setView(key){
+    currentView = (currentView===key) ? null : key;
+    render();
+  }
+  document.querySelectorAll('.sidebar .filter.view[data-col]').forEach(function(v){
+    v.addEventListener('click',function(e){
+      e.preventDefault();
+      setView(v.getAttribute('data-col'));
+    });
+  });
+
   function boot(){
+    // Filtre initial éventuel depuis l'URL (#todo / #doing / #waiting / #done),
+    // par ex. en venant des raccourcis de la page Clients.
+    var h=(location.hash||'').replace('#','');
+    if(['todo','doing','waiting','done'].indexOf(h)>=0) currentView=h;
     if(!window.BC){ render(); return; }
     BC.ready().then(function(){
       TASKS = BC.tasks.all().map(toMem);
@@ -1597,20 +1620,6 @@
     }).catch(function(e){ console.error('[BC] chargement tâches', e); render(); });
   }
   boot();
-
-  // Filtrer le board par Vue (sidebar) — selon la catégorie
-  (function(){
-    var vues=document.querySelectorAll('.sidebar .filter.view[data-col]');
-    function clearF(){ vues.forEach(function(x){x.classList.remove('vactive');}); board.classList.remove('kb-one'); board.querySelectorAll('.kb-col').forEach(function(col){col.style.display='';}); }
-    vues.forEach(function(v){
-      v.addEventListener('click',function(){
-        var col=v.getAttribute('data-col');
-        if(v.classList.contains('vactive')){ clearF(); return; }
-        clearF(); v.classList.add('vactive'); board.classList.add('kb-one');
-        board.querySelectorAll('.kb-col').forEach(function(c){ c.style.display = c.getAttribute('data-col')===col ? '' : 'none'; });
-      });
-    });
-  })();
 })();
 
 // User dropdown menu (sidebar)

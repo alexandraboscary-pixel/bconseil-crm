@@ -42,6 +42,80 @@
   var suppress = { clients: 0, documents: 0, tasks: 0 };
   function markLocal(table) { suppress[table] = Date.now() + 2500; }
 
+  // ===========================================================================
+  // MODE DÉMO (sandbox local)
+  // ---------------------------------------------------------------------------
+  // Quand on se connecte avec le compte de démonstration, les données ne
+  // proviennent PAS de la base partagée : elles sont chargées localement ci-dessous
+  // et toutes les écritures restent en mémoire (rien n'est envoyé à Supabase).
+  // Conséquence : le compte démo ne voit que ces données, et ces données
+  // n'apparaissent jamais pour les comptes réels (Alexandra, François…).
+  // ===========================================================================
+  var DEMO_EMAIL = "demo@test.com";
+  var isDemo = false;
+  var demoSeq = 0;
+  function demoId(prefix) { return (prefix || "demo") + "-" + (Date.now().toString(36)) + "-" + (++demoSeq); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+  var DEMO_CLIENTS = [
+    { societe:"Lumina Tech",      contact:"Léa Fontaine",   prenom:"Léa",    nom:"Fontaine", email:"lea.fontaine@lumina-tech.fr",       tel:"+33 6 21 45 88 03", ville:"Paris",      secteur:"SaaS",            statut:"encours",     devis_date:"03/06/2026", montant:14200, referent:"François",  tjm:650 },
+    { societe:"Atelier Margaux",  contact:"Hugo Lacroix",   prenom:"Hugo",   nom:"Lacroix",  email:"hugo.lacroix@ateliermargaux.fr",    tel:"+33 6 32 17 64 90", ville:"Bordeaux",   secteur:"Restauration",    statut:"devis",       devis_date:"08/06/2026", montant:4800,  referent:"Alexandra", tjm:550 },
+    { societe:"NordVision",       contact:"Claire Dumas",   prenom:"Claire", nom:"Dumas",    email:"claire.dumas@nordvision.fr",        tel:"+33 6 43 09 27 51", ville:"Lille",      secteur:"Santé",           statut:"prospection", devis_date:"",           montant:0,     referent:"François",  tjm:600 },
+    { societe:"Solaris Énergie",  contact:"Karim Haddad",   prenom:"Karim",  nom:"Haddad",   email:"karim.haddad@solaris-energie.fr",   tel:"+33 6 54 73 12 86", ville:"Marseille",  secteur:"Énergie",         statut:"facture",     devis_date:"28/05/2026", montant:26500, referent:"François",  tjm:700 },
+    { societe:"Maison Dubreuil",  contact:"Élise Renaud",   prenom:"Élise",  nom:"Renaud",   email:"elise.renaud@maisondubreuil.fr",    tel:"+33 6 65 28 41 19", ville:"Lyon",       secteur:"Luxe",            statut:"encours",     devis_date:"31/05/2026", montant:9300,  referent:"Alexandra", tjm:620 },
+    { societe:"Pixel & Co",       contact:"Thomas Berger",  prenom:"Thomas", nom:"Berger",   email:"thomas.berger@pixelandco.fr",       tel:"+33 6 76 50 38 24", ville:"Nantes",     secteur:"Communication",   statut:"devis",       devis_date:"06/06/2026", montant:6200,  referent:"Alexandra", tjm:580 },
+    { societe:"Aquitaine Bio",    contact:"Sarah Olivier",  prenom:"Sarah",  nom:"Olivier",  email:"sarah.olivier@aquitaine-bio.fr",    tel:"+33 6 87 41 59 67", ville:"Bordeaux",   secteur:"Agroalimentaire", statut:"paye",        devis_date:"22/05/2026", montant:15400, referent:"François",  tjm:600 },
+    { societe:"TechNova",         contact:"Antoine Marchal",prenom:"Antoine",nom:"Marchal",  email:"antoine.marchal@technova.fr",       tel:"+33 6 98 32 70 45", ville:"Toulouse",   secteur:"Industrie",       statut:"prospection", devis_date:"",           montant:0,     referent:"François",  tjm:680 },
+    { societe:"Cabinet Aurélien", contact:"Manon Lopez",    prenom:"Manon",  nom:"Lopez",    email:"manon.lopez@cabinet-aurelien.fr",   tel:"+33 6 19 63 84 72", ville:"Strasbourg", secteur:"Juridique",       statut:"recontacter", devis_date:"14/05/2026", montant:3500,  referent:"Alexandra", tjm:540 },
+    { societe:"Riviera Hôtels",   contact:"Lucas Henry",    prenom:"Lucas",  nom:"Henry",    email:"lucas.henry@riviera-hotels.fr",     tel:"+33 6 20 57 19 38", ville:"Nice",       secteur:"Hôtellerie",      statut:"paye",        devis_date:"03/06/2026", montant:18700, referent:"François",  tjm:660 }
+  ];
+  var DEMO_TASKS = [
+    { title:"Préparer le devis — Atelier Margaux",                description:"Chiffrer la refonte du site et préparer le devis détaillé à envoyer au client.", assignee:"François",  client:"Atelier Margaux",  urgent:true,  due:"2026-06-15", col:"todo",    position:0 },
+    { title:"Cadrage projet SaaS — Lumina Tech",                  description:"Atelier de cadrage : objectifs, périmètre fonctionnel et roadmap du SaaS.",     assignee:"Alexandra", client:"Lumina Tech",      urgent:false, due:"2026-06-18", col:"todo",    position:1 },
+    { title:"Étude de besoin — NordVision",                       description:"Premier rendez-vous de découverte et analyse du besoin client.",                assignee:"François",  client:"NordVision",       urgent:false, due:"",           col:"todo",    position:2 },
+    { title:"Développement module facturation — Solaris Énergie", description:"Sprint en cours sur le module de facturation et l'export comptable.",          assignee:"François",  client:"Solaris Énergie",  urgent:false, due:"2026-06-20", col:"doing",   position:0 },
+    { title:"Maquettes UX — Maison Dubreuil",                     description:"Concevoir les maquettes des écrans clés et le parcours d'achat premium.",       assignee:"Alexandra", client:"Maison Dubreuil",  urgent:true,  due:"2026-06-13", col:"doing",   position:1 },
+    { title:"Refonte identité — Pixel & Co",                      description:"Nouvelle direction artistique et déclinaison de la charte graphique.",          assignee:"Alexandra", client:"Pixel & Co",       urgent:false, due:"",           col:"doing",   position:2 },
+    { title:"Validation devis — Riviera Hôtels",                  description:"En attente de la validation du devis par la direction de l'hôtel.",            assignee:"François",  client:"Riviera Hôtels",   urgent:false, due:"2026-06-16", col:"waiting", position:0 },
+    { title:"Retour client maquettes — Aquitaine Bio",            description:"En attente des retours du client sur les maquettes proposées.",                assignee:"Alexandra", client:"Aquitaine Bio",    urgent:false, due:"",           col:"waiting", position:1 },
+    { title:"Livraison site — Cabinet Aurélien",                  description:"Site livré, mis en ligne et recette validée avec le client.",                  assignee:"François",  client:"Cabinet Aurélien", urgent:false, due:"",           col:"done",    position:0 },
+    { title:"Formation IA équipe — TechNova",                     description:"Session de formation à l'IA générative animée pour les équipes.",              assignee:"Alexandra", client:"TechNova",         urgent:false, due:"",           col:"done",    position:1 }
+  ];
+  // Documents de démo : [société, type, date]. Le montant TTC reprend le `montant`
+  // du client ; HT/TVA sont déduits (TVA 20 %). Sert au dashboard (revenu, devis,
+  // conversion) et à la page Comptabilité.
+  var DEMO_DOCS = [
+    ["Solaris Énergie", "facture", "2026-05-28"],
+    ["Aquitaine Bio",   "facture", "2026-05-22"],
+    ["Riviera Hôtels",  "facture", "2026-06-03"],
+    ["Lumina Tech",     "devis",   "2026-06-03"],
+    ["Maison Dubreuil", "devis",   "2026-05-31"],
+    ["Atelier Margaux", "devis",   "2026-06-08"],
+    ["Pixel & Co",      "devis",   "2026-06-06"],
+    ["Cabinet Aurélien","devis",   "2026-05-14"]
+  ];
+  function loadDemoData() {
+    var now = new Date().toISOString();
+    cache.clients = DEMO_CLIENTS.map(function (c) { return Object.assign({ id: demoId("client"), logo_url: null, notes: "", history: [], created_at: now }, clone(c)); });
+    cache.tasks = DEMO_TASKS.map(function (t) { return Object.assign({ id: demoId("task"), created_at: now }, clone(t)); });
+    var seqN = { devis: 0, facture: 0 };
+    cache.documents = DEMO_DOCS.map(function (d) {
+      var cl = clients.bySociete(d[0]) || {};
+      var ttc = Number(cl.montant) || 0;
+      var ht = Math.round(ttc / 1.2);
+      var prefix = d[1] === "facture" ? "FA" : "DV";
+      seqN[d[1]] += 1;
+      var num = prefix + "-2026-" + String(100 + seqN[d[1]]);
+      return {
+        id: demoId("doc"), type: d[1], numero: num, client_id: cl.id || null,
+        societe: d[0], contact: cl.contact || "", date: d[2], ref: "",
+        ht: ht, tva: ttc - ht, ttc: ttc, lines: [], notes: "",
+        statut: d[1], sent: d[1] === "facture", sent_to: cl.email || "",
+        created_at: now
+      };
+    });
+  }
+
   // Détecte une colonne absente du schéma dans une erreur PostgREST.
   function missingCol(err) {
     if (!err) return null;
@@ -129,8 +203,18 @@
   // ---- READY ----------------------------------------------------------------
   function ready() {
     if (readyPromise) return readyPromise;
-    readyPromise = Promise.all([loadClients(), loadDocuments(), loadTasks()])
-      .then(function () { subscribeRealtime(); return cache; });
+    readyPromise = sb.auth.getSession().then(function (r) {
+      var user = (r.data && r.data.session) ? r.data.session.user : null;
+      isDemo = !!(user && user.email && user.email.toLowerCase() === DEMO_EMAIL);
+      window.BC.isDemo = isDemo;
+      if (isDemo) {
+        // Sandbox : aucune lecture de la base partagée, aucun realtime.
+        loadDemoData();
+        return cache;
+      }
+      return Promise.all([loadClients(), loadDocuments(), loadTasks()])
+        .then(function () { subscribeRealtime(); return cache; });
+    });
     return readyPromise;
   }
 
@@ -145,6 +229,11 @@
       var fields = {};
       ["societe", "contact", "prenom", "nom", "email", "tel", "ville", "secteur", "statut", "devis_date", "montant", "referent", "logo_url", "notes", "history", "adresse", "siret", "tjm"]
         .forEach(function (k) { if (c[k] !== undefined) fields[k] = c[k]; });
+      if (isDemo) {
+        if (ex) { Object.assign(ex, fields); return Promise.resolve(ex); }
+        var row = Object.assign({ id: demoId("client"), created_at: new Date().toISOString() }, fields);
+        cache.clients.push(row); return Promise.resolve(row);
+      }
       if (ex) {
         return resilientWrite("clients", fields, ex.id).then(function (data) { Object.assign(ex, data); return ex; });
       }
@@ -152,6 +241,7 @@
     },
     update: function (id, patch) {
       markLocal("clients");
+      if (isDemo) { var exd = cache.clients.filter(function (c) { return c.id === id; })[0]; if (exd) Object.assign(exd, patch); return Promise.resolve(exd); }
       return resilientWrite("clients", patch, id).then(function (data) {
         var ex = cache.clients.filter(function (c) { return c.id === id; })[0]; if (ex) Object.assign(ex, data); return ex;
       });
@@ -160,11 +250,13 @@
       markLocal("clients");
       var ex = clients.bySociete(societe);
       if (!ex) return Promise.resolve(null);
+      if (isDemo) { ex.statut = statut; return Promise.resolve(ex); }
       return sb.from("clients").update({ statut: statut }).eq("id", ex.id).select().single()
         .then(function (r) { if (r.error) throw r.error; ex.statut = statut; return ex; });
     },
     remove: function (id) {
       markLocal("clients");
+      if (isDemo) { cache.clients = cache.clients.filter(function (c) { return c.id !== id; }); return Promise.resolve(); }
       return sb.from("clients").delete().eq("id", id)
         .then(function (r) { if (r.error) throw r.error; cache.clients = cache.clients.filter(function (c) { return c.id !== id; }); });
     }
@@ -175,16 +267,19 @@
     all: function () { return cache.documents; },
     create: function (d) {
       markLocal("documents");
+      if (isDemo) { var row = Object.assign({ id: demoId("doc"), created_at: new Date().toISOString() }, d); cache.documents.push(row); return Promise.resolve(row); }
       return resilientWrite("documents", d, null).then(function (data) { cache.documents.push(data); return data; });
     },
     update: function (id, patch) {
       markLocal("documents");
+      if (isDemo) { var exd = cache.documents.filter(function (x) { return x.id === id; })[0]; if (exd) Object.assign(exd, patch); return Promise.resolve(exd); }
       return resilientWrite("documents", patch, id).then(function (data) {
         var ex = cache.documents.filter(function (x) { return x.id === id; })[0]; if (ex) Object.assign(ex, data); return ex;
       });
     },
     markSent: function (id, email) {
       markLocal("documents");
+      if (isDemo) { var dd = cache.documents.filter(function (x) { return x.id === id; })[0]; if (dd) { dd.sent = true; dd.sent_to = email; } return Promise.resolve(dd); }
       return sb.from("documents").update({ sent: true, sent_to: email }).eq("id", id).select().single()
         .then(function (r) {
           if (r.error) throw r.error;
@@ -195,6 +290,7 @@
     },
     remove: function (id) {
       markLocal("documents");
+      if (isDemo) { cache.documents = cache.documents.filter(function (x) { return x.id !== id; }); return Promise.resolve(); }
       return sb.from("documents").delete().eq("id", id)
         .then(function (r) { if (r.error) throw r.error; cache.documents = cache.documents.filter(function (x) { return x.id !== id; }); });
     }
@@ -205,11 +301,13 @@
     all: function () { return cache.tasks; },
     create: function (t) {
       markLocal("tasks");
+      if (isDemo) { var row = Object.assign({ id: demoId("task"), created_at: new Date().toISOString() }, t); cache.tasks.push(row); return Promise.resolve(row); }
       return sb.from("tasks").insert(t).select().single()
         .then(function (r) { if (r.error) throw r.error; cache.tasks.push(r.data); return r.data; });
     },
     update: function (id, patch) {
       markLocal("tasks");
+      if (isDemo) { var td = cache.tasks.filter(function (x) { return x.id === id; })[0]; if (td) Object.assign(td, patch); return Promise.resolve(td); }
       return sb.from("tasks").update(patch).eq("id", id).select().single()
         .then(function (r) {
           if (r.error) throw r.error;
@@ -223,14 +321,16 @@
     },
     remove: function (id) {
       markLocal("tasks");
+      if (isDemo) { cache.tasks = cache.tasks.filter(function (x) { return x.id !== id; }); return Promise.resolve(); }
       return sb.from("tasks").delete().eq("id", id)
         .then(function (r) { if (r.error) throw r.error; cache.tasks = cache.tasks.filter(function (x) { return x.id !== id; }); });
     },
     // Sauvegarde l'ordre + la colonne de toutes les cartes (après drag & drop).
     reorder: function (items) {
       markLocal("tasks");
-      var ups = items.map(function (it) { return sb.from("tasks").update({ col: it.col, position: it.position }).eq("id", it.id); });
       items.forEach(function (it) { var t = cache.tasks.filter(function (x) { return x.id === it.id; })[0]; if (t) { t.col = it.col; t.position = it.position; } });
+      if (isDemo) return Promise.resolve();
+      var ups = items.map(function (it) { return sb.from("tasks").update({ col: it.col, position: it.position }).eq("id", it.id); });
       return Promise.all(ups);
     }
   };
@@ -294,7 +394,8 @@
     tasks: tasks,
     profile: profile,
     onChange: onChange,
-    norm: norm
+    norm: norm,
+    isDemo: false
   };
 
   // ---- Garde d'authentification --------------------------------------------
